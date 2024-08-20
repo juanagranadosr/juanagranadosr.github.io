@@ -1,4 +1,4 @@
-title: Researcher
+title: "Juana Granados"
 url: "juanagranadosr.github.io"
 remote_theme: ankitsultana/researcher@gem
 baseurl: ""
@@ -17,9 +17,9 @@ sass:
     sass_dir: _sass
 
 nav:
- - name: "About"
-   link: "/researcher/"
+ #- name: "About"
+ #  link: "/researcher/"
  - name: "Resume"
    link: "resume.pdf"
- - name: "Contact"
-   link: "contact"
+ #- name: "Contact"
+ #  link: "contact"
