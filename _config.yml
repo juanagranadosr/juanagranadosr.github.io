@@ -1,6 +1,7 @@
 title: Researcher
-url: "https://ankitsultana.com"
-baseurl: "/researcher"
+url: "juanagranadosr.github.io"
+remote_theme: ankitsultana/researcher@gem
+baseurl: ""
 
 markdown: kramdown
 #ins_logo: "./bits-logo.png"
