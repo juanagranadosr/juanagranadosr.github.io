@@ -5,7 +5,7 @@ layout: default
 ## Welcome to my Website
 
 <!-- <img class="profile-picture" src="sherlock.jpg"> -->
-Hi! I’m Juana, a soon-to-be graduate of Universidad de los andes in Bogotá, where I've pursued a diverse education in Physics with a minor in Mathematics. I am eagerly looking forward to my graduation this coming October.
+Hi! I’m Juana, a soon-to-be graduate of Universidad de Los Andes in Bogotá, where I've pursued a diverse education in Physics with a minor in Mathematics. I am eagerly looking forward to my graduation this coming October.
 
 ## About My Academic Journey
 
