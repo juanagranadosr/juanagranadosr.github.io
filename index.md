@@ -2,7 +2,7 @@
 layout: default
 ---
 ### About Me
-<img class="profile-picture" src="sherlock.jpg">
+<img class="profile-picture" src="foto.jpg">
 
 I'm Juana, a physics graduate with a focus on theoretical physics and mathematical physics. I also have experience in experimental research, specifically in the study of the magnetic and electric properties of nanoparticles.
 
