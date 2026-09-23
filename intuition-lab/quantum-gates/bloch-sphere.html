@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloch sphere</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg: #0a0e13;
+    --panel: #0f151c;
+    --panel-2: #131b24;
+    --border: #1e2833;
+    --border-soft: #182028;
+    --text: #e6edf3;
+    --text-dim: #7c8b9b;
+    --text-dimmer: #52606d;
+    --accent: #55d8c6;
+    --accent-dim: #2c574f;
+    --accent-2: #e8a35c;
+    --mono: 'SFMono-Regular','Cascadia Code','JetBrains Mono','Consolas','Menlo',monospace;
+    --sans: 'Avenir Next','Century Gothic','Futura','Segoe UI',sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{ display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+  header{
+    padding:16px 22px 14px; border-bottom:1px solid var(--border-soft);
+    display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+  }
+  header h1{ margin:0; font-size:17px; font-weight:600; letter-spacing:0.2px; }
+  header p{ margin:0; font-size:12.5px; color:var(--text-dim); }
+  main{ flex:1; display:grid; grid-template-columns: 1fr 356px; min-height:0; }
+
+  #stage{
+    position:relative; min-width:0; min-height:0; overflow:hidden;
+    display:flex; flex-direction:column;
+    background: radial-gradient(ellipse at 50% 40%, #0e141b 0%, #090c10 70%);
+  }
+  #spheres-row{ position:relative; flex:1; min-height:0; overflow:auto; }
+  #stage-grid{
+    position:absolute; inset:0; display:flex; gap:14px; padding:16px;
+    align-items:stretch; justify-content:center; flex-wrap:wrap;
+  }
+  #fullstate-panel{
+    flex-shrink:0; height:216px; border-top:1px solid var(--border-soft);
+    padding:12px 18px 14px; overflow-y:auto; background:var(--panel);
+  }
+  #fullstate-panel.qsphere-mode{ height:400px; }
+  #fullstate-panel h3{
+    margin:0; font-size:12px; font-weight:600; color:var(--text-dim);
+  }
+  .fs-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .fs-toggle{ display:flex; gap:6px; }
+  .fs-toggle-btn{
+    font-family:var(--mono); font-size:11px; padding:4px 10px; border-radius:5px;
+    border:1px solid var(--border); background:var(--panel-2); color:var(--text-dim); cursor:pointer;
+  }
+  .fs-toggle-btn.selected{ border-color:var(--accent); color:var(--accent); background:#0f2420; }
+  #qsphereWrap{
+    display:none; position:relative; height:330px; margin-top:2px;
+    border:1px solid var(--border-soft); border-radius:8px; overflow:hidden;
+  }
+  .fs-legend{
+    display:flex; align-items:center; gap:8px; margin:2px 0 10px;
+    font-family:var(--mono); font-size:10px; color:var(--text-dimmer);
+  }
+  .fs-legend .bar{
+    width:100%; height:8px; border-radius:4px;
+    background:linear-gradient(to right, hsl(0,70%,55%),hsl(60,70%,55%),hsl(120,70%,55%),hsl(180,70%,55%),hsl(240,70%,55%),hsl(300,70%,55%),hsl(360,70%,55%));
+    border:1px solid var(--border-soft);
+  }
+  .fs-legend .ticks{ display:flex; justify-content:space-between; margin-top:3px; }
+
+  #qsphereMount{ position:absolute; inset:0; }
+  #qsphereMount canvas{ display:block; width:100%; height:100%; }
+
+  #circuitWrap{ overflow-x:auto; overflow-y:hidden; padding-bottom:2px; }
+  #circuitSvg{ display:block; }
+  .circuit-empty{ font-size:11.5px; color:var(--text-dimmer); padding:6px 0; }
+  #fsFormula{
+    font-family:var(--mono); font-size:12.5px; color:var(--text);
+    margin:0 0 12px; line-height:1.6; word-break:break-word;
+  }
+  #fsFormula .amp{ color:var(--accent); }
+  #fsBars{ display:flex; gap:10px; align-items:flex-end; height:110px; }
+  .fs-col{ display:flex; flex-direction:column; align-items:center; gap:5px; flex:1 1 0; min-width:30px; max-width:64px; height:100%; justify-content:flex-end; }
+  .fs-track{
+    width:100%; max-width:40px; height:78px; background:var(--panel-2);
+    border:1px solid var(--border-soft); border-radius:4px;
+    display:flex; align-items:flex-end; overflow:hidden;
+  }
+  .fs-bar{ width:100%; height:0%; background:var(--border); transition:height .35s ease, background-color .35s ease; }
+  .fs-basis{ font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+  .fs-prob{ font-family:var(--mono); font-size:10px; color:var(--text-dimmer); }
+  .sphere-card{
+    position:relative; flex:1 1 260px; max-width:560px; min-width:210px;
+    border:1px solid var(--border-soft); border-radius:10px; overflow:hidden;
+  }
+  .canvas-mount{ position:absolute; inset:0; }
+  .canvas-mount canvas{ display:block; width:100%; height:100%; }
+  .card-label{
+    position:absolute; top:10px; left:12px; z-index:2; pointer-events:none;
+    font-family:var(--mono); font-size:12px; color:var(--text-dim);
+    display:flex; align-items:center; gap:6px;
+  }
+  .card-label .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .card-stats{
+    position:absolute; top:10px; right:12px; z-index:2; pointer-events:none;
+    font-family:var(--mono); font-size:11px; color:var(--text-dim);
+    line-height:1.6; text-align:right;
+  }
+  .card-stats .accentnum{ color:var(--accent); }
+  .hint{
+    position:absolute; left:16px; bottom:10px; font-size:11px; z-index:5;
+    color:var(--text-dimmer); font-family:var(--mono); letter-spacing:0.2px;
+    pointer-events:none;
+  }
+
+  aside{
+    border-left:1px solid var(--border-soft); background:var(--panel);
+    overflow-y:auto; padding:18px 18px 28px;
+  }
+  section.group{ padding-top:18px; margin-top:18px; border-top:1px solid var(--border-soft); }
+  section.group:first-child{ margin-top:0; padding-top:0; border-top:none; }
+  .group h2{ margin:0 0 10px; font-size:12px; font-weight:600; color:var(--text-dim); letter-spacing:0.15px; }
+  .group .sub{ margin:-6px 0 10px; font-size:11.5px; color:var(--text-dimmer); line-height:1.5; }
+
+  .btnrow{ display:grid; grid-template-columns: repeat(4,1fr); gap:6px; }
+  .btnrow.two{ grid-template-columns: repeat(2,1fr); }
+  .btnrow.three{ grid-template-columns: repeat(3,1fr); }
+  .gate-btn{
+    font-family:var(--mono); font-size:14px; font-weight:600;
+    background:var(--panel-2); color:var(--text);
+    border:1px solid var(--border); border-radius:5px;
+    padding:9px 4px; cursor:pointer; letter-spacing:0.2px;
+    transition:background .15s, border-color .15s, transform .08s, color .15s;
+  }
+  .gate-btn:hover{ border-color:var(--accent-dim); background:#152029; }
+  .gate-btn:active{ transform:scale(0.95); }
+  .gate-btn.flash{ background:var(--accent); color:#06110f; border-color:var(--accent); }
+  .gate-btn.selected{ border-color:var(--accent); color:var(--accent); background:#0f2420; }
+  .gate-btn:disabled{ opacity:0.4; cursor:not-allowed; color:var(--text-dimmer); }
+  .gate-btn:disabled:hover{ border-color:var(--border); background:var(--panel-2); }
+
+  .field-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .field-row label{ font-size:11.5px; color:var(--text-dim); width:28px; font-family:var(--mono); }
+  .field-row input[type=number], .field-row select{
+    flex:1; background:var(--panel-2); border:1px solid var(--border);
+    color:var(--text); font-family:var(--mono); font-size:13px;
+    border-radius:5px; padding:7px 8px; width:100%; min-width:0;
+  }
+  .field-row input:focus, .field-row select:focus{ outline:none; border-color:var(--accent-dim); }
+  .axis-presets{ display:flex; gap:6px; margin-bottom:10px; }
+  .axis-presets button{
+    flex:1; font-family:var(--mono); font-size:11.5px;
+    background:var(--panel-2); color:var(--text-dim); border:1px solid var(--border);
+    border-radius:5px; padding:6px 0; cursor:pointer;
+  }
+  .axis-presets button:hover{ color:var(--text); border-color:var(--accent-dim); }
+  .axis-presets button.selected{ border-color:var(--accent); color:var(--accent); background:#0f2420; }
+
+  .apply-btn{
+    padding:9px 0; border-radius:5px; width:100%;
+    background:var(--accent); color:#06110f; border:none;
+    font-family:var(--sans); font-weight:600; font-size:13px; cursor:pointer;
+    transition:filter .15s;
+  }
+  .apply-btn:hover{ filter:brightness(1.08); }
+  .apply-btn:active{ transform:scale(0.98); }
+  .apply-btn:disabled{ opacity:0.35; cursor:not-allowed; filter:none; }
+
+  .reset-btn{
+    width:100%; padding:9px 0; border-radius:5px;
+    background:transparent; color:var(--text-dim); border:1px solid var(--border);
+    font-family:var(--sans); font-size:12.5px; cursor:pointer;
+  }
+  .reset-btn:hover{ color:var(--text); border-color:var(--text-dimmer); }
+
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:12.5px; color:var(--text-dim); margin-top:10px;
+  }
+  .toggle-row input{ accent-color:var(--accent); }
+
+  @media (max-width: 860px){
+    main{ grid-template-columns: 1fr; grid-template-rows: 50vh 1fr; }
+    aside{ border-left:none; border-top:1px solid var(--border-soft); }
+    #fullstate-panel{ height:150px; }
+    #fullstate-panel.qsphere-mode{ height:260px; }
+    #qsphereWrap{ height:200px; }
+    #fsBars{ height:70px; }
+    .fs-track{ height:46px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Bloch sphere</h1>
+    <p>Single- and multi-qubit states, visualized. Each sphere shows one qubit's reduced state.</p>
+  </header>
+  <main>
+    <div id="stage">
+      <div id="spheres-row">
+        <div id="stage-grid"></div>
+      </div>
+      <div id="fullstate-panel">
+        <div class="fs-header">
+          <h3>Full joint state |&psi;&#10217;</h3>
+          <div class="fs-toggle">
+            <button class="fs-toggle-btn selected" data-view="bars">Bars</button>
+            <button class="fs-toggle-btn" data-view="qsphere">Q-sphere</button>
+          </div>
+        </div>
+        <div class="fs-legend">
+          <span>phase</span>
+          <div style="flex:1; max-width:220px;">
+            <div class="bar"></div>
+            <div class="ticks"><span>0&deg;</span><span>90&deg;</span><span>180&deg;</span><span>270&deg;</span><span>360&deg;</span></div>
+          </div>
+        </div>
+        <div id="fsFormula"></div>
+        <div id="fsBars"></div>
+        <div id="qsphereWrap"><div id="qsphereMount"></div></div>
+      </div>
+      <div class="hint">drag a sphere to orbit &middot; scroll to zoom</div>
+    </div>
+    <aside>
+      <section class="group">
+        <h2>Qubits</h2>
+        <p class="sub">Add qubits to explore entanglement. The full state is tracked exactly; each sphere is that qubit's reduced state, so entangling it shrinks the arrow toward the center.</p>
+        <div class="btnrow three" id="qcountRow">
+          <button class="gate-btn qcount selected" data-n="1">1</button>
+          <button class="gate-btn qcount" data-n="2">2</button>
+          <button class="gate-btn qcount" data-n="3">3</button>
+        </div>
+      </section>
+
+      <section class="group" id="targetQubitSection" style="display:none;">
+        <h2>Apply single-qubit gates to</h2>
+        <div class="btnrow three" id="targetQubitRow"></div>
+      </section>
+
+      <section class="group">
+        <h2>Hadamard</h2>
+        <div class="btnrow two">
+          <button class="gate-btn" data-gate="H">H</button>
+          <button class="reset-btn" id="resetBtn">Reset state</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Pauli gates</h2>
+        <div class="btnrow">
+          <button class="gate-btn" data-gate="X">X</button>
+          <button class="gate-btn" data-gate="Y">Y</button>
+          <button class="gate-btn" data-gate="Z">Z</button>
+          <span></span>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Phase gates</h2>
+        <div class="btnrow">
+          <button class="gate-btn" data-gate="S">S</button>
+          <button class="gate-btn" data-gate="Sdg">S&#8224;</button>
+          <button class="gate-btn" data-gate="T">T</button>
+          <button class="gate-btn" data-gate="Tdg">T&#8224;</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>General rotation</h2>
+        <p class="sub">Rotate the selected qubit by an angle about any axis n&#8407;.</p>
+        <div class="axis-presets">
+          <button data-axis="1,0,0">X axis</button>
+          <button data-axis="0,1,0">Y axis</button>
+          <button data-axis="0,0,1">Z axis</button>
+        </div>
+        <div class="field-row"><label>nx</label><input type="number" id="nx" value="0" step="0.1"></div>
+        <div class="field-row"><label>ny</label><input type="number" id="ny" value="0" step="0.1"></div>
+        <div class="field-row"><label>nz</label><input type="number" id="nz" value="1" step="0.1"></div>
+        <div class="field-row"><label>&theta;</label><input type="number" id="angle" value="90" step="5"></div>
+        <button class="apply-btn" id="applyRot">Apply rotation</button>
+      </section>
+
+      <section class="group">
+        <h2>Two-qubit gates</h2>
+        <p class="sub" id="twoQubitHint">Add a second qubit to entangle states with CNOT, CZ, or a controlled rotation.</p>
+        <div id="twoQubitControls" style="display:none;">
+          <div class="field-row"><label>ctrl</label><select id="controlSel"></select></div>
+          <div class="field-row"><label>tgt</label><select id="targetSel"></select></div>
+          <div class="btnrow two">
+            <button class="apply-btn" id="applyCnot" style="background:var(--accent-2);">CNOT</button>
+            <button class="apply-btn" id="applyCz">CZ</button>
+          </div>
+          <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border-soft);">
+            <p class="sub" style="margin-top:0;">Controlled rotation CR&alpha;(&theta;) &mdash; rotates the target only when the control is |1&#10217;.</p>
+            <div class="axis-presets" id="crAxisPresets">
+              <button data-axis="1,0,0">CRx</button>
+              <button data-axis="0,1,0">CRy</button>
+              <button data-axis="0,0,1" class="selected">CRz</button>
+            </div>
+            <div class="field-row"><label>&theta;</label><input type="number" id="crAngle" value="90" step="5"></div>
+            <button class="apply-btn" id="applyCR" style="background:var(--accent-2);">Apply controlled rotation</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>View</h2>
+        <div class="toggle-row"><span>Auto-rotate</span><input type="checkbox" id="autoRotate"></div>
+        <div class="toggle-row"><span>Show trace</span><input type="checkbox" id="traceToggle" checked></div>
+        <button class="reset-btn" id="resetViewBtn" style="margin-top:10px;">Reset view</button>
+      </section>
+
+      <section class="group">
+        <h2>Quantum circuit</h2>
+        <div id="circuitWrap"><svg id="circuitSvg"></svg></div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script>
+(function(){
+  // ================= vector / rotation math =================
+  function v(x,y,z){ return {x:x,y:y,z:z}; }
+  function vlen(a){ return Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z); }
+  function vnorm(a){ const l=vlen(a)||1; return v(a.x/l,a.y/l,a.z/l); }
+  function vdot(a,b){ return a.x*b.x+a.y*b.y+a.z*b.z; }
+  function vcross(a,b){ return v(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x); }
+  function rotate(p, n, a){
+    const c=Math.cos(a), s=Math.sin(a);
+    const cr=vcross(n,p), d=vdot(n,p);
+    return v(p.x*c+cr.x*s+n.x*d*(1-c), p.y*c+cr.y*s+n.y*d*(1-c), p.z*c+cr.z*s+n.z*d*(1-c));
+  }
+  // generic interpolation between two Bloch vectors (used for two-qubit gate effects,
+  // where there is no single well-defined rotation axis)
+  function slerpVec(a, b, t){
+    const la=vlen(a), lb=vlen(b);
+    if(la<1e-5 || lb<1e-5){
+      return v(a.x+(b.x-a.x)*t, a.y+(b.y-a.y)*t, a.z+(b.z-a.z)*t);
+    }
+    const da=v(a.x/la,a.y/la,a.z/la), db=v(b.x/lb,b.y/lb,b.z/lb);
+    let dot=Math.min(1,Math.max(-1,vdot(da,db)));
+    const ang=Math.acos(dot);
+    const len=la+(lb-la)*t;
+    if(ang<1e-4){ return v(da.x*len,da.y*len,da.z*len); }
+    const s0=Math.sin((1-t)*ang)/Math.sin(ang), s1=Math.sin(t*ang)/Math.sin(ang);
+    const dx=da.x*s0+db.x*s1, dy=da.y*s0+db.y*s1, dz=da.z*s0+db.z*s1;
+    return v(dx*len,dy*len,dz*len);
+  }
+  function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+  function deg2rad(d){ return d*Math.PI/180; }
+  function rad2deg(r){ return r*180/Math.PI; }
+  function fmt(n,d){ d=d===undefined?3:d; return (n<0?"":"\u00A0")+n.toFixed(d); }
+
+  // ================= complex arithmetic =================
+  function cAdd(a,b){ return {re:a.re+b.re, im:a.im+b.im}; }
+  function cMul(a,b){ return {re:a.re*b.re-a.im*b.im, im:a.re*b.im+a.im*b.re}; }
+
+  const SQRT1_2 = Math.SQRT1_2;
+  const GATES = {
+    H:   { axis:v(SQRT1_2,0,SQRT1_2), angle:Math.PI,    label:'H',
+           U:[[{re:SQRT1_2,im:0},{re:SQRT1_2,im:0}],[{re:SQRT1_2,im:0},{re:-SQRT1_2,im:0}]] },
+    X:   { axis:v(1,0,0), angle:Math.PI,
+           U:[[{re:0,im:0},{re:1,im:0}],[{re:1,im:0},{re:0,im:0}]], label:'X' },
+    Y:   { axis:v(0,1,0), angle:Math.PI,
+           U:[[{re:0,im:0},{re:0,im:-1}],[{re:0,im:1},{re:0,im:0}]], label:'Y' },
+    Z:   { axis:v(0,0,1), angle:Math.PI,
+           U:[[{re:1,im:0},{re:0,im:0}],[{re:0,im:0},{re:-1,im:0}]], label:'Z' },
+    S:   { axis:v(0,0,1), angle:Math.PI/2,
+           U:[[{re:1,im:0},{re:0,im:0}],[{re:0,im:0},{re:0,im:1}]], label:'S' },
+    Sdg: { axis:v(0,0,1), angle:-Math.PI/2,
+           U:[[{re:1,im:0},{re:0,im:0}],[{re:0,im:0},{re:0,im:-1}]], label:'S\u2020' },
+    T:   { axis:v(0,0,1), angle:Math.PI/4,
+           U:[[{re:1,im:0},{re:0,im:0}],[{re:0,im:0},{re:SQRT1_2,im:SQRT1_2}]], label:'T' },
+    Tdg: { axis:v(0,0,1), angle:-Math.PI/4,
+           U:[[{re:1,im:0},{re:0,im:0}],[{re:0,im:0},{re:SQRT1_2,im:-SQRT1_2}]], label:'T\u2020' },
+  };
+  function generalU(axis, theta){
+    const c=Math.cos(theta/2), s=Math.sin(theta/2);
+    return [
+      [{re:c, im:-s*axis.z}, {re:-s*axis.y, im:-s*axis.x}],
+      [{re:s*axis.y, im:-s*axis.x}, {re:c, im:s*axis.z}]
+    ];
+  }
+
+  // ================= multi-qubit state =================
+  let numQubits = 1;
+  let stateVec = [{re:1,im:0},{re:0,im:0}]; // |0>
+  let selectedQubit = 0;
+
+  function initState(n){
+    const size = 1<<n;
+    const s = new Array(size);
+    for(let i=0;i<size;i++) s[i] = {re:0,im:0};
+    s[0] = {re:1,im:0};
+    return s;
+  }
+  function applyGate1(state, n, k, U){
+    const size = 1<<n, bitPos = n-1-k, mask = 1<<bitPos;
+    const out = new Array(size);
+    for(let i=0;i<size;i++){
+      if((i & mask)===0){
+        const i0=i, i1=i|mask, a0=state[i0], a1=state[i1];
+        out[i0] = cAdd(cMul(U[0][0],a0), cMul(U[0][1],a1));
+        out[i1] = cAdd(cMul(U[1][0],a0), cMul(U[1][1],a1));
+      }
+    }
+    return out;
+  }
+  function applyCNOT(state, n, c, t){
+    const size=1<<n, bitC=n-1-c, bitT=n-1-t;
+    const out = new Array(size);
+    for(let i=0;i<size;i++){
+      let j=i;
+      if((i>>bitC)&1){ j = i ^ (1<<bitT); }
+      out[j] = state[i];
+    }
+    return out;
+  }
+  function applyCZ(state, n, c, t){
+    const bitC=n-1-c, bitT=n-1-t;
+    return state.map((amp,i)=> (((i>>bitC)&1) && ((i>>bitT)&1)) ? {re:-amp.re,im:-amp.im} : amp);
+  }
+  function applyControlledGate(state, n, c, t, U){
+    const size=1<<n, bitC=n-1-c, bitT=n-1-t, maskC=1<<bitC, maskT=1<<bitT;
+    const out = state.slice();
+    for(let i=0;i<size;i++){
+      if((i & maskT)===0 && (i & maskC)){
+        const i0=i, i1=i|maskT, a0=state[i0], a1=state[i1];
+        out[i0] = cAdd(cMul(U[0][0],a0), cMul(U[0][1],a1));
+        out[i1] = cAdd(cMul(U[1][0],a0), cMul(U[1][1],a1));
+      }
+    }
+    return out;
+  }
+  function reducedBloch(state, n, k){
+    const size=1<<n, bitPos=n-1-k, mask=1<<bitPos;
+    let rho00=0, rho11=0, r01re=0, r01im=0;
+    for(let i=0;i<size;i++){
+      if((i & mask)===0){
+        const a0=state[i], a1=state[i|mask];
+        rho00 += a0.re*a0.re + a0.im*a0.im;
+        rho11 += a1.re*a1.re + a1.im*a1.im;
+        r01re += a0.re*a1.re + a0.im*a1.im;
+        r01im += a0.im*a1.re - a0.re*a1.im;
+      }
+    }
+    return v(2*r01re, -2*r01im, rho00-rho11);
+  }
+
+  // ================= sphere widget factory =================
+  const R = 1.3;
+  function createSphereWidget(mount){
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    mount.appendChild(renderer.domElement);
+
+    const sphereMat = new THREE.MeshBasicMaterial({color:0x2d4457, transparent:true, opacity:0.22, side:THREE.DoubleSide});
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(R,32,24), sphereMat));
+    const wireMat = new THREE.MeshBasicMaterial({color:0x4a6478, wireframe:true, transparent:true, opacity:0.22});
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(R,20,14), wireMat));
+
+    function circlePoints(fn,n){ const p=[]; for(let i=0;i<=n;i++) p.push(fn(i/n*Math.PI*2)); return p; }
+    function addCircle(points,color,opacity){
+      const g = new THREE.BufferGeometry().setFromPoints(points.map(p=>new THREE.Vector3(p.x,p.y,p.z)));
+      scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({color,transparent:true,opacity})));
+    }
+    const rimPts=[]; for(let i=0;i<=64;i++){ const t=i/64*Math.PI*2; rimPts.push(v(R*Math.cos(t),R*Math.sin(t),0)); }
+    addCircle(rimPts, 0x6f92a8, 0.5);
+    [30,60,120,150].forEach(deg=>{
+      const polar=deg2rad(deg);
+      addCircle(circlePoints(t=>v(R*Math.sin(polar)*Math.cos(t),R*Math.sin(polar)*Math.sin(t),R*Math.cos(polar)),48), 0x3a4a58, 0.14);
+    });
+    [45,90,135].forEach(deg=>{
+      const az=deg2rad(deg);
+      addCircle(circlePoints(t=>v(R*Math.sin(t)*Math.cos(az),R*Math.sin(t)*Math.sin(az),R*Math.cos(t)),48), 0x3a4a58, 0.20);
+    });
+    function addAxis(dir,color){
+      addCircle([v(-dir.x*R*1.28,-dir.y*R*1.28,-dir.z*R*1.28), v(dir.x*R*1.28,dir.y*R*1.28,dir.z*R*1.28)], color, 0.5);
+    }
+    addAxis(v(1,0,0), 0xc97b6a); addAxis(v(0,1,0), 0x7fbf8f); addAxis(v(0,0,1), 0x6f9fd1);
+
+    function makeLabel(text,color){
+      const c=document.createElement('canvas'); c.width=256; c.height=128;
+      const ctx=c.getContext('2d');
+      ctx.font='600 56px "SFMono-Regular","Consolas",monospace';
+      ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(text,128,68);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthTest:false}));
+      sprite.scale.set(0.58,0.29,1);
+      return sprite;
+    }
+    function placeLabel(text,pos,color){ const s=makeLabel(text,color); s.position.set(pos.x,pos.y,pos.z); scene.add(s); }
+    placeLabel('|0\u27E9', v(0,0,R*1.22), '#e6edf3');
+    placeLabel('|1\u27E9', v(0,0,-R*1.22), '#e6edf3');
+    placeLabel('|+\u27E9', v(R*1.24,0,0), '#c9a591');
+    placeLabel('|\u2212\u27E9', v(-R*1.28,0,0), '#c9a591');
+    placeLabel('|+i\u27E9', v(0,R*1.28,0), '#9fceac');
+    placeLabel('|\u2212i\u27E9', v(0,-R*1.34,0), '#9fceac');
+
+    const arrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), R, 0x55d8c6, 0.20, 0.11);
+    scene.add(arrow);
+
+    const traceMat = new THREE.LineBasicMaterial({color:0xe8a35c, transparent:true, opacity:0.55});
+    let traceGeom = new THREE.BufferGeometry();
+    const traceLine = new THREE.Line(traceGeom, traceMat);
+    scene.add(traceLine);
+    let tracePoints = [v(0,0,1)];
+    let traceVisible = true;
+    function updateTrace(){
+      traceLine.visible = traceVisible && tracePoints.length>1;
+      traceGeom.dispose();
+      traceGeom = new THREE.BufferGeometry().setFromPoints(tracePoints.map(p=>new THREE.Vector3(p.x*R,p.y*R,p.z*R)));
+      traceLine.geometry = traceGeom;
+    }
+
+    camera.up.set(0,0,1);
+    const DEFAULT_VIEW = {radius:4.2, azimuth:0.9, polar:1.15};
+    let radius=DEFAULT_VIEW.radius, azimuth=DEFAULT_VIEW.azimuth, polar=DEFAULT_VIEW.polar;
+    let autoRotate=false;
+    function updateCamera(){
+      camera.position.set(radius*Math.sin(polar)*Math.cos(azimuth), radius*Math.sin(polar)*Math.sin(azimuth), radius*Math.cos(polar));
+      camera.lookAt(0,0,0);
+    }
+    updateCamera();
+
+    let dragging=false, lastX=0, lastY=0;
+    const dom = renderer.domElement;
+    dom.style.touchAction='none';
+    dom.addEventListener('pointerdown', e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; dom.setPointerCapture(e.pointerId); });
+    dom.addEventListener('pointerup', ()=>{ dragging=false; });
+    dom.addEventListener('pointercancel', ()=>{ dragging=false; });
+    dom.addEventListener('pointermove', e=>{
+      if(!dragging) return;
+      const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+      azimuth -= dx*0.006;
+      polar = Math.min(Math.PI-0.05, Math.max(0.05, polar - dy*0.006));
+      updateCamera();
+    });
+    dom.addEventListener('wheel', e=>{
+      e.preventDefault();
+      radius = Math.min(9, Math.max(2.0, radius + e.deltaY*0.0025*radius));
+      updateCamera();
+    }, {passive:false});
+
+    function resize(){
+      const w=mount.clientWidth, h=mount.clientHeight;
+      if(w<2||h<2) return;
+      camera.aspect=w/h; camera.updateProjectionMatrix();
+      renderer.setSize(w,h);
+    }
+    new ResizeObserver(resize).observe(mount);
+    resize();
+
+    let currentVec = v(0,0,1);
+    let animState = null;
+
+    function updateArrow(){
+      const len = vlen(currentVec);
+      const dir = len>1e-5 ? v(currentVec.x/len,currentVec.y/len,currentVec.z/len) : v(0,0,1);
+      arrow.setDirection(new THREE.Vector3(dir.x,dir.y,dir.z));
+      arrow.setLength(Math.max(len,0.04)*R, 0.20, 0.11);
+    }
+    updateArrow(); updateTrace();
+
+    return {
+      applyRotationAnim(axis, angle){
+        animState = {type:'rotate', start:{...currentVec}, axis, angle, t0:performance.now(), duration:650};
+      },
+      applyTargetAnim(target){
+        animState = {type:'slerp', start:{...currentVec}, target, t0:performance.now(), duration:650};
+      },
+      jumpTo(vecObj){
+        currentVec = {...vecObj}; animState=null; tracePoints=[{...vecObj}]; updateArrow(); updateTrace();
+      },
+      getVec(){ return currentVec; },
+      setTraceVisible(b){ traceVisible=b; updateTrace(); },
+      setAutoRotate(b){ autoRotate=b; },
+      resetView(){ radius=DEFAULT_VIEW.radius; azimuth=DEFAULT_VIEW.azimuth; polar=DEFAULT_VIEW.polar; updateCamera(); },
+      frame(){
+        if(autoRotate && !dragging){ azimuth += 0.0035; updateCamera(); }
+        if(animState){
+          const t=Math.min(1,(performance.now()-animState.t0)/animState.duration);
+          const e=easeInOutCubic(t);
+          if(animState.type==='rotate'){
+            currentVec = t>=1 ? rotate(animState.start,animState.axis,animState.angle) : rotate(animState.start,animState.axis,animState.angle*e);
+          } else {
+            currentVec = t>=1 ? {...animState.target} : slerpVec(animState.start, animState.target, e);
+          }
+          tracePoints.push({...currentVec});
+          if(tracePoints.length>400) tracePoints.shift();
+          updateTrace();
+          if(t>=1) animState=null;
+          updateArrow();
+        }
+        renderer.render(scene,camera);
+      }
+    };
+  }
+
+  // ================= Q-sphere widget (full joint state) =================
+  function popcount(x){ let c=0; while(x){ c+=x&1; x>>=1; } return c; }
+
+  function createQSphereWidget(mount, n){
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    mount.appendChild(renderer.domElement);
+
+    const wireMat = new THREE.MeshBasicMaterial({color:0x4a6478, wireframe:true, transparent:true, opacity:0.16});
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(R,18,12), wireMat));
+    const fillMat = new THREE.MeshBasicMaterial({color:0x2d4457, transparent:true, opacity:0.08, side:THREE.DoubleSide});
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(R,24,18), fillMat));
+    // weight-latitude rings for reference
+    for(let w=0; w<=n; w++){
+      const theta = n===0?0:(w/n)*Math.PI;
+      const pts=[]; for(let i=0;i<=48;i++){ const t=i/48*Math.PI*2; pts.push(new THREE.Vector3(R*Math.sin(theta)*Math.cos(t), R*Math.sin(theta)*Math.sin(t), R*Math.cos(theta))); }
+      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x3a4a58, transparent:true, opacity:0.18})));
+    }
+
+    function makeLabel(text,color){
+      const c=document.createElement('canvas'); c.width=256; c.height=112;
+      const ctx=c.getContext('2d');
+      ctx.font='600 46px "SFMono-Regular","Consolas",monospace';
+      ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(text,128,58);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthTest:false}));
+      sprite.scale.set(0.52,0.23,1);
+      return sprite;
+    }
+
+    const size = 1<<n;
+    const groups = {};
+    for(let i=0;i<size;i++){ const w=popcount(i); (groups[w]=groups[w]||[]).push(i); }
+    const positions = new Array(size);
+    Object.keys(groups).forEach(wKey=>{
+      const w = parseInt(wKey), arr = groups[wKey];
+      const theta = n===0?0:(w/n)*Math.PI;
+      arr.forEach((idx,j)=>{ positions[idx] = {theta, phi: (j/arr.length)*Math.PI*2 + w*0.35}; });
+    });
+
+    const dotGeom = new THREE.SphereGeometry(1,16,12);
+    const dots=[], stems=[];
+    for(let i=0;i<size;i++){
+      const {theta,phi} = positions[i];
+      const p = v(R*Math.sin(theta)*Math.cos(phi), R*Math.sin(theta)*Math.sin(phi), R*Math.cos(theta));
+      const mat = new THREE.MeshBasicMaterial({color:0x3a4654, transparent:true, opacity:0.4});
+      const mesh = new THREE.Mesh(dotGeom, mat);
+      mesh.position.set(p.x,p.y,p.z); mesh.scale.set(0.05,0.05,0.05);
+      scene.add(mesh); dots.push(mesh);
+
+      const stemMat = new THREE.LineBasicMaterial({color:0x3a4654, transparent:true, opacity:0.12});
+      const stem = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(p.x,p.y,p.z)]), stemMat);
+      scene.add(stem); stems.push(stem);
+
+      const bin = i.toString(2).padStart(n,'0');
+      const lbl = makeLabel('|'+bin+'\u27E9', '#8fa3b5');
+      lbl.position.set(p.x*1.2, p.y*1.2, p.z*1.2);
+      scene.add(lbl);
+    }
+
+    camera.up.set(0,0,1);
+    const DEFAULT_VIEW = {radius:4.4, azimuth:0.9, polar:1.15};
+    let radius=DEFAULT_VIEW.radius, azimuth=DEFAULT_VIEW.azimuth, polar=DEFAULT_VIEW.polar;
+    let autoRotate=false;
+    function updateCamera(){
+      camera.position.set(radius*Math.sin(polar)*Math.cos(azimuth), radius*Math.sin(polar)*Math.sin(azimuth), radius*Math.cos(polar));
+      camera.lookAt(0,0,0);
+    }
+    updateCamera();
+
+    let dragging=false, lastX=0, lastY=0;
+    const dom = renderer.domElement;
+    dom.style.touchAction='none';
+    dom.addEventListener('pointerdown', e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; dom.setPointerCapture(e.pointerId); });
+    dom.addEventListener('pointerup', ()=>{ dragging=false; });
+    dom.addEventListener('pointercancel', ()=>{ dragging=false; });
+    dom.addEventListener('pointermove', e=>{
+      if(!dragging) return;
+      const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+      azimuth -= dx*0.006;
+      polar = Math.min(Math.PI-0.05, Math.max(0.05, polar - dy*0.006));
+      updateCamera();
+    });
+    dom.addEventListener('wheel', e=>{
+      e.preventDefault();
+      radius = Math.min(9, Math.max(2.2, radius + e.deltaY*0.0025*radius));
+      updateCamera();
+    }, {passive:false});
+
+    function resize(){
+      const w=mount.clientWidth, h=mount.clientHeight;
+      if(w<2||h<2) return;
+      camera.aspect=w/h; camera.updateProjectionMatrix();
+      renderer.setSize(w,h);
+    }
+    new ResizeObserver(resize).observe(mount);
+    resize();
+
+    return {
+      updateState(stateVec){
+        for(let i=0;i<size;i++){
+          const amp=stateVec[i];
+          const mag=Math.sqrt(amp.re*amp.re+amp.im*amp.im);
+          const prob=mag*mag;
+          const phaseDeg=((rad2deg(Math.atan2(amp.im,amp.re))%360)+360)%360;
+          if(prob>1e-4){
+            const scale=0.05+0.32*Math.sqrt(prob);
+            dots[i].scale.set(scale,scale,scale);
+            dots[i].material.color.setStyle('hsl('+Math.round(phaseDeg)+',70%,55%)');
+            dots[i].material.opacity=0.95;
+            stems[i].material.color.setStyle('hsl('+Math.round(phaseDeg)+',70%,55%)');
+            stems[i].material.opacity=0.5;
+          } else {
+            dots[i].scale.set(0.05,0.05,0.05);
+            dots[i].material.color.setHex(0x3a4654);
+            dots[i].material.opacity=0.4;
+            stems[i].material.color.setHex(0x3a4654);
+            stems[i].material.opacity=0.12;
+          }
+        }
+      },
+      setAutoRotate(b){ autoRotate=b; },
+      resetView(){ radius=DEFAULT_VIEW.radius; azimuth=DEFAULT_VIEW.azimuth; polar=DEFAULT_VIEW.polar; updateCamera(); },
+      forceResize(){ resize(); },
+      frame(){
+        if(autoRotate && !dragging){ azimuth += 0.0035; updateCamera(); }
+        renderer.render(scene,camera);
+      }
+    };
+  }
+
+  // ================= app wiring =================
+  const stageGrid = document.getElementById('stage-grid');
+  let widgets = [];
+  let qsphereWidget = null;
+  let fullStateView = 'bars';
+  let showTrace = true;
+  let autoRotateOn = false;
+
+  function rebuildWidgets(n){
+    stageGrid.innerHTML = '';
+    widgets = [];
+    for(let i=0;i<n;i++){
+      const card = document.createElement('div');
+      card.className = 'sphere-card';
+      card.innerHTML =
+        '<div class="card-label"><span class="dot"></span>q'+i+'</div>' +
+        '<div class="card-stats" id="stats'+i+'"></div>' +
+        '<div class="canvas-mount"></div>';
+      stageGrid.appendChild(card);
+      const mount = card.querySelector('.canvas-mount');
+      const w = createSphereWidget(mount);
+      w.setTraceVisible(showTrace);
+      w.setAutoRotate(autoRotateOn);
+      widgets.push(w);
+    }
+  }
+
+  function rebuildQSphere(n){
+    const mount = document.getElementById('qsphereMount');
+    mount.innerHTML = '';
+    qsphereWidget = createQSphereWidget(mount, n);
+    qsphereWidget.setAutoRotate(autoRotateOn);
+  }
+
+  function updateStats(){
+    for(let i=0;i<widgets.length;i++){
+      const el = document.getElementById('stats'+i);
+      if(!el) continue;
+      const vec = widgets[i].getVec();
+      const r = vlen(vec);
+      if(r<0.01){
+        el.innerHTML = '<b>r</b> <span class="accentnum">0.00</span><br>maximally mixed';
+      } else {
+        const zc = Math.min(1,Math.max(-1, vec.z/r));
+        const theta = Math.acos(zc);
+        const phi = ((rad2deg(Math.atan2(vec.y,vec.x))%360)+360)%360;
+        el.innerHTML =
+          'r = <span class="accentnum">'+fmt(r,2).trim()+'</span><br>' +
+          '\u03B8 = '+fmt(rad2deg(theta),0).trim()+'\u00B0<br>' +
+          '\u03C6 = '+fmt(phi,0).trim()+'\u00B0';
+      }
+    }
+  }
+
+  function updateFullStatePanel(){
+    const n = numQubits, size = 1<<n;
+    const formulaEl = document.getElementById('fsFormula');
+    const barsEl = document.getElementById('fsBars');
+    const parts = [];
+    let barsHtml = '';
+    for(let i=0;i<size;i++){
+      const amp = stateVec[i];
+      const mag = Math.sqrt(amp.re*amp.re + amp.im*amp.im);
+      const prob = mag*mag;
+      const phaseDeg = ((rad2deg(Math.atan2(amp.im, amp.re))%360)+360)%360;
+      const bin = i.toString(2).padStart(n,'0');
+      if(mag > 1e-3){
+        const isReal = Math.abs(amp.im) < 1e-3;
+        const negative = isReal && amp.re < 0;
+        let body = '<span class="amp">'+fmt(mag,2).trim()+'</span>';
+        if(!isReal){ body += '\u00B7e<sup>i'+fmt(phaseDeg,0).trim()+'\u00B0</sup>'; }
+        body += '|'+bin+'\u27E9';
+        parts.push({negative, body});
+      }
+      const hue = mag>1e-3 ? Math.round(phaseDeg) : 210;
+      const sat = mag>1e-3 ? 70 : 15;
+      const light = mag>1e-3 ? 55 : 22;
+      barsHtml +=
+        '<div class="fs-col">'+
+          '<div class="fs-track"><div class="fs-bar" style="height:'+(prob*100).toFixed(1)+'%; background:hsl('+hue+','+sat+'%,'+light+'%);"></div></div>'+
+          '<div class="fs-basis">|'+bin+'\u27E9</div>'+
+          '<div class="fs-prob">'+(prob*100).toFixed(0)+'%</div>'+
+        '</div>';
+    }
+    let formula = '0';
+    if(parts.length){
+      formula = parts.map((p,idx)=>{
+        if(idx===0) return (p.negative?'\u2212':'') + p.body;
+        return (p.negative?' \u2212 ':' + ') + p.body;
+      }).join('');
+    }
+    formulaEl.innerHTML = '|\u03C8\u27E9 = ' + formula;
+    barsEl.innerHTML = barsHtml;
+    if(qsphereWidget) qsphereWidget.updateState(stateVec);
+  }
+
+  let circuitSteps = [];
+
+  function recordStep(step){
+    circuitSteps.push(step);
+    renderCircuit();
+  }
+
+  function renderCircuit(){
+    const svg = document.getElementById('circuitSvg');
+    const rowH = 40, colW = 44, leftM = 30, topM = 16;
+    const n = numQubits;
+    const steps = circuitSteps;
+    const width = leftM + Math.max(steps.length,1)*colW + 20;
+    const height = topM*2 + rowH*(n-1) + 20;
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+    svg.setAttribute('viewBox', '0 0 '+width+' '+height);
+
+    const rowY = i => topM + i*rowH + 10;
+    const colX = j => leftM + j*colW + colW/2;
+    let s = '';
+
+    // wires + qubit labels
+    for(let i=0;i<n;i++){
+      const y = rowY(i);
+      s += '<line x1="'+leftM+'" y1="'+y+'" x2="'+(width-10)+'" y2="'+y+'" stroke="#2a3844" stroke-width="1.5"/>';
+      s += '<text x="0" y="'+y+'" dominant-baseline="middle" font-family="SFMono-Regular,Consolas,monospace" font-size="11" fill="#7c8b9b">q'+i+'</text>';
+    }
+
+    if(steps.length===0){
+      s += '<text x="'+leftM+'" y="'+(height-6)+'" font-family="Avenir Next,sans-serif" font-size="10.5" fill="#52606d">no gates applied yet</text>';
+    }
+
+    steps.forEach((st,j)=>{
+      const x = colX(j);
+      if(st.type==='single'){
+        const y = rowY(st.qubit);
+        s += '<rect x="'+(x-15)+'" y="'+(y-14)+'" width="30" height="28" rx="5" fill="#131b24" stroke="#2c574f" stroke-width="1.3"/>';
+        s += '<text x="'+x+'" y="'+(y+1)+'" text-anchor="middle" dominant-baseline="middle" font-family="SFMono-Regular,Consolas,monospace" font-weight="600" font-size="13" fill="#55d8c6">'+st.symbol+'<title>'+st.full+'</title></text>';
+      } else {
+        const yc = rowY(st.control), yt = rowY(st.target);
+        const yMin = Math.min(yc,yt), yMax = Math.max(yc,yt);
+        s += '<line x1="'+x+'" y1="'+yMin+'" x2="'+x+'" y2="'+yMax+'" stroke="#e8a35c" stroke-width="1.6"/>';
+        s += '<circle cx="'+x+'" cy="'+yc+'" r="5" fill="#e8a35c"/>';
+        if(st.type==='CNOT'){
+          s += '<circle cx="'+x+'" cy="'+yt+'" r="10" fill="none" stroke="#e8a35c" stroke-width="1.6"/>';
+          s += '<line x1="'+(x-10)+'" y1="'+yt+'" x2="'+(x+10)+'" y2="'+yt+'" stroke="#e8a35c" stroke-width="1.6"/>';
+          s += '<line x1="'+x+'" y1="'+(yt-10)+'" x2="'+x+'" y2="'+(yt+10)+'" stroke="#e8a35c" stroke-width="1.6"/>';
+        } else if(st.type==='CR'){
+          s += '<rect x="'+(x-16)+'" y="'+(yt-14)+'" width="32" height="28" rx="5" fill="#131b24" stroke="#e8a35c" stroke-width="1.3"/>';
+          s += '<text x="'+x+'" y="'+(yt+1)+'" text-anchor="middle" dominant-baseline="middle" font-family="SFMono-Regular,Consolas,monospace" font-weight="600" font-size="12" fill="#e8a35c">'+st.symbol+'<title>Controlled '+st.symbol+'('+fmt(st.angle,0).trim()+'\u00B0), control q'+st.control+' \u2192 target q'+st.target+'</title></text>';
+        } else {
+          s += '<circle cx="'+x+'" cy="'+yt+'" r="5" fill="#e8a35c"/>';
+        }
+      }
+    });
+
+    svg.innerHTML = s;
+  }
+
+  function refreshTargetQubitUI(){
+    const section = document.getElementById('targetQubitSection');
+    const row = document.getElementById('targetQubitRow');
+    if(numQubits<=1){ section.style.display='none'; return; }
+    section.style.display='';
+    row.innerHTML='';
+    for(let i=0;i<numQubits;i++){
+      const b=document.createElement('button');
+      b.className='gate-btn qtarget'+(i===selectedQubit?' selected':'');
+      b.textContent='q'+i;
+      b.addEventListener('click', ()=>{
+        selectedQubit=i;
+        row.querySelectorAll('.qtarget').forEach(x=>x.classList.remove('selected'));
+        b.classList.add('selected');
+      });
+      row.appendChild(b);
+    }
+  }
+
+  function refreshTwoQubitUI(){
+    const hint = document.getElementById('twoQubitHint');
+    const controls = document.getElementById('twoQubitControls');
+    if(numQubits<2){
+      hint.style.display=''; controls.style.display='none'; return;
+    }
+    hint.style.display='none'; controls.style.display='';
+    const cSel=document.getElementById('controlSel'), tSel=document.getElementById('targetSel');
+    cSel.innerHTML=''; tSel.innerHTML='';
+    for(let i=0;i<numQubits;i++){
+      cSel.innerHTML += '<option value="'+i+'">q'+i+'</option>';
+      tSel.innerHTML += '<option value="'+i+'">q'+i+'</option>';
+    }
+    cSel.value='0'; tSel.value='1';
+  }
+
+  function setQubitCount(n){
+    numQubits = n;
+    selectedQubit = 0;
+    stateVec = initState(n);
+    rebuildWidgets(n);
+    rebuildQSphere(n);
+    refreshTargetQubitUI();
+    refreshTwoQubitUI();
+    circuitSteps = [];
+    renderCircuit();
+    document.querySelectorAll('.qcount').forEach(b=>b.classList.toggle('selected', parseInt(b.dataset.n)===n));
+    updateFullStatePanel();
+  }
+
+  function doSingleQubitGate(U, axis, angle, symbol, fullLabel){
+    const k = selectedQubit;
+    stateVec = applyGate1(stateVec, numQubits, k, U);
+    widgets[k].applyRotationAnim(axis, angle);
+    recordStep({type:'single', qubit:k, symbol:symbol, full: (fullLabel||symbol) + (numQubits>1?' on q'+k:'')});
+    updateFullStatePanel();
+  }
+
+  function doTwoQubitGate(kind){
+    const c = parseInt(document.getElementById('controlSel').value);
+    const t = parseInt(document.getElementById('targetSel').value);
+    if(c===t) return;
+    stateVec = kind==='CNOT' ? applyCNOT(stateVec,numQubits,c,t) : applyCZ(stateVec,numQubits,c,t);
+    widgets[c].applyTargetAnim(reducedBloch(stateVec,numQubits,c));
+    widgets[t].applyTargetAnim(reducedBloch(stateVec,numQubits,t));
+    recordStep({type:kind, control:c, target:t});
+    updateFullStatePanel();
+  }
+
+  let crAxis = v(0,0,1);
+  function doControlledRotation(){
+    const c = parseInt(document.getElementById('controlSel').value);
+    const t = parseInt(document.getElementById('targetSel').value);
+    if(c===t) return;
+    const angDeg = parseFloat(document.getElementById('crAngle').value)||0;
+    const theta = deg2rad(angDeg);
+    const U = generalU(crAxis, theta);
+    stateVec = applyControlledGate(stateVec, numQubits, c, t, U);
+    widgets[c].applyTargetAnim(reducedBloch(stateVec,numQubits,c));
+    widgets[t].applyTargetAnim(reducedBloch(stateVec,numQubits,t));
+    let axisLabel = 'R';
+    if(crAxis.x===1&&crAxis.y===0&&crAxis.z===0) axisLabel='Rx';
+    else if(crAxis.x===0&&crAxis.y===1&&crAxis.z===0) axisLabel='Ry';
+    else if(crAxis.x===0&&crAxis.y===0&&crAxis.z===1) axisLabel='Rz';
+    recordStep({type:'CR', control:c, target:t, symbol:axisLabel, angle:angDeg});
+    updateFullStatePanel();
+  }
+
+  // full-state view toggle
+  function setFullStateView(mode){
+    fullStateView = mode;
+    document.getElementById('fsFormula').style.display = mode==='bars' ? '' : 'none';
+    document.getElementById('fsBars').style.display = mode==='bars' ? 'flex' : 'none';
+    document.getElementById('qsphereWrap').style.display = mode==='qsphere' ? 'block' : 'none';
+    document.getElementById('fullstate-panel').classList.toggle('qsphere-mode', mode==='qsphere');
+    if(mode==='qsphere' && qsphereWidget){ requestAnimationFrame(()=>qsphereWidget.forceResize()); }
+  }
+  document.querySelectorAll('.fs-toggle-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.fs-toggle-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      setFullStateView(btn.dataset.view);
+    });
+  });
+
+  // gate buttons
+  document.querySelectorAll('.gate-btn[data-gate]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const g = GATES[btn.dataset.gate];
+      doSingleQubitGate(g.U, g.axis, g.angle, g.label);
+      btn.classList.add('flash'); setTimeout(()=>btn.classList.remove('flash'),220);
+    });
+  });
+
+  // qubit count
+  document.querySelectorAll('.qcount').forEach(btn=>{
+    btn.addEventListener('click', ()=> setQubitCount(parseInt(btn.dataset.n)) );
+  });
+
+  // general rotation
+  document.querySelectorAll('.axis-presets button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const [x,y,z] = btn.dataset.axis.split(',').map(Number);
+      document.getElementById('nx').value=x; document.getElementById('ny').value=y; document.getElementById('nz').value=z;
+    });
+  });
+  document.getElementById('applyRot').addEventListener('click', ()=>{
+    const nx=parseFloat(document.getElementById('nx').value)||0;
+    const ny=parseFloat(document.getElementById('ny').value)||0;
+    const nz=parseFloat(document.getElementById('nz').value)||0;
+    const angDeg=parseFloat(document.getElementById('angle').value)||0;
+    if(nx===0&&ny===0&&nz===0) return;
+    const axis = vnorm(v(nx,ny,nz));
+    const theta = deg2rad(angDeg);
+    const U = generalU(axis, theta);
+    const label = 'R('+fmt(nx,1).trim()+','+fmt(ny,1).trim()+','+fmt(nz,1).trim()+')'+fmt(angDeg,0).trim()+'\u00B0';
+    doSingleQubitGate(U, axis, theta, 'R', label);
+  });
+
+  // two-qubit gates
+  document.getElementById('applyCnot').addEventListener('click', ()=> doTwoQubitGate('CNOT'));
+  document.getElementById('applyCz').addEventListener('click', ()=> doTwoQubitGate('CZ'));
+  document.querySelectorAll('#crAxisPresets button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const [x,y,z] = btn.dataset.axis.split(',').map(Number);
+      crAxis = v(x,y,z);
+      document.querySelectorAll('#crAxisPresets button').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+  document.getElementById('applyCR').addEventListener('click', doControlledRotation);
+
+  // reset
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    stateVec = initState(numQubits);
+    widgets.forEach(w=>w.jumpTo(v(0,0,1)));
+    circuitSteps = [];
+    renderCircuit();
+    updateFullStatePanel();
+  });
+
+  // view controls
+  document.getElementById('autoRotate').addEventListener('change', e=>{
+    autoRotateOn = e.target.checked;
+    widgets.forEach(w=>w.setAutoRotate(autoRotateOn));
+    if(qsphereWidget) qsphereWidget.setAutoRotate(autoRotateOn);
+  });
+  document.getElementById('traceToggle').addEventListener('change', e=>{
+    showTrace = e.target.checked;
+    widgets.forEach(w=>w.setTraceVisible(showTrace));
+  });
+  document.getElementById('resetViewBtn').addEventListener('click', ()=>{
+    widgets.forEach(w=>w.resetView());
+    if(qsphereWidget) qsphereWidget.resetView();
+  });
+
+  // master render loop
+  function tick(){
+    widgets.forEach(w=>w.frame());
+    if(qsphereWidget) qsphereWidget.frame();
+    updateStats();
+    requestAnimationFrame(tick);
+  }
+
+  setQubitCount(1);
+  tick();
+})();
+</script>
+</body>
+</html>

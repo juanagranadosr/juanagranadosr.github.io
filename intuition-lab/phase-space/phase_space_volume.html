@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phase-space volume, Liouville, and attractors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E8ECF0; --panel:#F5F7F9; --ink:#162030; --muted:#566273; --rule:#C6CED8;
+  --canvas:#FBFCFD; --contract:#2B6897; --expand:#A93A68; --edge:#C9860A; --cg:#2F8563;
+  --serif:"Spectral",Georgia,"Times New Roman",serif;
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161F; --panel:#18202B; --ink:#E3E8EE; --muted:#97A3B3; --rule:#2E3A49;
+    --canvas:#131A24; --contract:#5FA3D6; --expand:#E0709E; --edge:#F0B43C; --cg:#5CC39A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10161F; --panel:#18202B; --ink:#E3E8EE; --muted:#97A3B3; --rule:#2E3A49;
+  --canvas:#131A24; --contract:#5FA3D6; --expand:#E0709E; --edge:#F0B43C; --cg:#5CC39A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.55}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 60px}
+header h1{font-weight:400;font-size:clamp(1.7rem,3.6vw,2.6rem);line-height:1.15;margin:0 0 .4rem;letter-spacing:-.01em}
+header p{max-width:70ch;margin:0 0 1.4rem;color:var(--muted);font-size:1.05rem}
+.eqline{font-style:italic}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.stage{background:var(--canvas);border:1px solid var(--rule);border-radius:6px;overflow:hidden;position:relative}
+#phase{display:block;width:100%;cursor:crosshair;touch-action:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:8px 12px;border-top:1px solid var(--rule);font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+.bar{width:120px;height:8px;border-radius:2px;background:linear-gradient(90deg,var(--contract),var(--canvas),var(--expand));border:1px solid var(--rule)}
+.hint{position:absolute;left:12px;top:10px;font-family:var(--sans);font-size:.78rem;color:var(--muted);background:color-mix(in srgb,var(--canvas) 85%,transparent);padding:3px 7px;border-radius:4px;pointer-events:none}
+.hover{position:absolute;right:10px;top:10px;font-family:var(--sans);font-size:.76rem;line-height:1.45;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--rule);border-radius:4px;padding:6px 9px;pointer-events:none;min-width:190px;display:none}
+.chartbox{margin-top:14px;background:var(--canvas);border:1px solid var(--rule);border-radius:6px;padding:10px 12px 6px}
+.chartbox h3{margin:0 0 4px;font-weight:600;font-size:1rem}
+#chart{display:block;width:100%;height:190px}
+.keys{display:flex;flex-wrap:wrap;gap:4px 18px;font-family:var(--sans);font-size:.8rem;color:var(--muted);margin-top:4px}
+.sw{display:inline-block;width:18px;height:0;border-top:2.5px solid;vertical-align:middle;margin-right:6px}
+aside{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:16px;font-family:var(--sans);font-size:.88rem}
+aside h2{font-family:var(--serif);font-weight:600;font-size:1.05rem;margin:0 0 8px}
+aside section+section{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{font-family:var(--sans);font-size:.84rem;color:var(--ink);background:var(--canvas);border:1px solid var(--rule);border-radius:4px;padding:7px 9px;cursor:pointer;text-align:left}
+button:hover{border-color:var(--muted)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--edge);outline-offset:2px}
+.eq{font-family:var(--serif);font-size:1rem;margin:10px 0 2px;line-height:1.5}
+.eq i{font-style:italic}
+.div{font-family:var(--serif);color:var(--muted);font-size:.95rem}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.presets button{padding:5px 8px;font-size:.8rem}
+label.sl{display:block;margin-top:9px}
+label.sl span{display:flex;justify-content:space-between;color:var(--muted)}
+label.sl output{color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.checks label{display:flex;gap:7px;align-items:center;margin:4px 0;color:var(--ink)}
+.stats{font-variant-numeric:tabular-nums;line-height:1.7}
+.stats b{font-weight:600}
+.warn{color:var(--expand);font-size:.8rem;margin-top:4px;min-height:1em}
+.watch{margin-top:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+@media (max-width:760px){.watch{grid-template-columns:1fr}}
+.watch h3{font-size:1.1rem;font-weight:600;margin:0 0 6px}
+.watch p{margin:0 0 .7rem;max-width:68ch}
+.note{border-left:3px solid var(--edge);padding-left:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>A blob of initial conditions, and what the flow does to its area</h1>
+  <p>For <span class="eqline">ẋ = f(x)</span>, an infinitesimal phase-space volume obeys
+  <span class="eqline">d ln δV / dt = ∇·f</span>. Drop a blob, watch its boundary, and compare its measured area with the
+  area predicted by integrating ∇·f along each trajectory. Hamiltonian flows keep it fixed; attractors need it to shrink.</p>
+</header>
+
+<div class="grid">
+  <div>
+    <div class="stage">
+      <canvas id="phase" aria-label="Phase portrait with an evolving blob of initial conditions"></canvas>
+      <div class="hint" id="hint">Click to drop a new blob. Hover to see the local Jacobian.</div>
+      <div class="hover" id="hover"></div>
+      <div class="legend">
+        <span>∇·f:</span><span>contracts</span><span class="bar"></span><span>expands</span>
+        <span id="divscale"></span>
+      </div>
+    </div>
+
+    <div class="chartbox">
+      <h3>ln(A / A₀) versus time</h3>
+      <canvas id="chart"></canvas>
+      <div class="keys">
+        <span><span class="sw" style="border-color:var(--ink)"></span>measured area of the blob boundary</span>
+        <span><span class="sw" style="border-color:var(--edge);border-top-style:dashed"></span>Liouville prediction: A₀⟨exp∫∇·f dt⟩</span>
+        <span><span class="sw" style="border-color:var(--cg)"></span>coarse-grained area (occupied cells)</span>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <section>
+      <h2>System</h2>
+      <div class="seg" id="models"></div>
+      <div class="eq" id="eq"></div>
+      <div class="div" id="divf"></div>
+      <div class="presets" id="presets"></div>
+    </section>
+    <section>
+      <h2>Parameters</h2>
+      <div id="params"></div>
+    </section>
+    <section>
+      <h2>Blob and noise</h2>
+      <label class="sl"><span>blob radius <output id="o_rad"></output></span><input type="range" id="rad" min="0.3" max="2" step="0.01" value="1"></label>
+      <label class="sl"><span>noise ε (√2ε η) <output id="o_eps"></output></span><input type="range" id="eps" min="0" max="0.15" step="0.001" value="0"></label>
+      <label class="sl"><span>coarse-graining cells across <output id="o_cg"></output></span><input type="range" id="cg" min="15" max="90" step="1" value="40"></label>
+      <label class="sl"><span>speed <output id="o_spd"></output></span><input type="range" id="spd" min="1" max="16" step="1" value="5"></label>
+      <div class="row" style="margin-top:10px">
+        <button id="play" aria-pressed="false">Pause</button>
+        <button id="reset">Reset blob</button>
+      </div>
+    </section>
+    <section class="checks">
+      <h2>Show</h2>
+      <label><input type="checkbox" id="c_div" checked> divergence map</label>
+      <label><input type="checkbox" id="c_vec" checked> vector field</label>
+      <label><input type="checkbox" id="c_bnd" checked> blob boundary</label>
+      <label><input type="checkbox" id="c_pts" checked> sample points</label>
+      <label><input type="checkbox" id="c_cells"> coarse-graining cells</label>
+    </section>
+    <section class="stats" id="stats"></section>
+    <div class="warn" id="warn"></div>
+  </aside>
+</div>
+
+<div class="watch">
+  <div class="note">
+    <h3>What to watch here</h3>
+    <div id="watch"></div>
+  </div>
+  <div>
+    <h3>The one equation behind all of it</h3>
+    <p>Transport a density ρ with the flow: <span class="eqline">∂ₜρ + ∇·(ρ f) = 0</span>. Along a trajectory this reads
+    <span class="eqline">dρ/dt = −(∇·f) ρ</span>, and the Jacobian determinant of the flow map obeys
+    <span class="eqline">d ln det Dφₜ / dt = tr J = ∇·f</span>. The dashed curve integrates exactly this, per sample point; the solid curve measures the boundary geometrically. They agree because they are the same theorem.</p>
+    <p>For Hamiltonian flow, <span class="eqline">J = ε · Hess H</span>, and the trace of an antisymmetric matrix times a symmetric one vanishes: Liouville. For gradient flow, <span class="eqline">J = −Hess V</span> is symmetric, so there is no rotation anywhere. The hover panel splits J into its symmetric part (stretching, whose trace is ∇·f) and its antisymmetric part (rotation Ω).</p>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const TAU=2*Math.PI;
+
+const MODELS={
+  notes:{
+    label:'Notes, Eq. (6)',
+    view:[-2.4,2.4,-1.8,1.8],
+    params:[
+      {id:'g',label:'gradient weight g',min:0,max:1.5,step:0.01,val:0.5},
+      {id:'w',label:'Hamiltonian strength ω',min:0,max:3,step:0.01,val:1},
+      {id:'a',label:'a (wine bottle, a < 0)',min:-2,max:-0.2,step:0.01,val:-1},
+      {id:'b',label:'b',min:0.3,max:2,step:0.01,val:1}],
+    f:(x,y,P)=>{const k=P.g*(P.a+P.b*(x*x+y*y));return [-k*x+P.w*y,-k*y-P.w*x];},
+    div:(x,y,P)=>-P.g*(2*P.a+4*P.b*(x*x+y*y)),
+    blob:{x:0.45,y:0.25,r:0.22},
+    presets:[['(a) volume-preserving',{g:0,w:1}],['(b) generic',{g:0.5,w:1}],['(c) variational',{g:0.5,w:0}]],
+    eq:'ẋ<sub>i</sub> = −g ∂<sub>i</sub>V + ε<sub>ij</sub>∂<sub>j</sub>H,<br><i>V</i> = <i>a</i>r²/2 + <i>b</i>r⁴/4, &nbsp;<i>H</i> = ωr²/2',
+    divtxt:'∇·f = −g(2a + 4b r²): expands inside r² < −a/2b, contracts outside',
+    watch:P=>{
+      if(P.g===0) return `<p><b>Pure Hamiltonian part.</b> ∇·f = 0 everywhere; the map is flat, and both curves stay on zero. Every circle is a periodic orbit, and they are not isolated: nudge the blob and it simply sits on a neighbouring orbit forever. There is nothing to be attracted to.</p><p>Here all orbits share the period 2π/ω, so the blob rotates rigidly. Switch to the pendulum to see the more typical case, where the period depends on energy and the blob shears.</p>`;
+      if(P.w===0) return `<p><b>Pure gradient descent.</b> J = −Hess V is symmetric, so Ω = 0 at every point (check the hover panel). The origin region expands (red), the outside contracts (blue), and the blob slides radially onto the circle of fixed points r = √(−a/b), then stops. Area goes to zero, but so does all motion: V strictly decreases along any non-stationary orbit, so no orbit can ever come back to where it was. Gradient systems cannot have periodic orbits.</p>`;
+      return `<p><b>Both parts on: a limit cycle.</b> The blob first grows (it starts where ∇·f > 0, the origin repels), then winds onto the circle r = √(−a/b) while being squeezed across it. Area → 0 exponentially, but motion on the ring persists. The gradient part supplies the contraction, the Hamiltonian part keeps the attractor moving. Neither alone does both.</p><p>Here ∇V ⊥ ε∇H at every point, so this is already the notes' transverse decomposition (Eq. 10) with U = V. Turn on noise: the cloud settles into p ∝ e<sup>−V/ε</sup>, independent of ω, yet it keeps circulating. That's a Boltzmann-looking stationary state with a nonzero probability current, i.e. broken detailed balance (Sec. II.D).</p>`;
+    }
+  },
+  pend:{
+    label:'Pendulum',
+    view:[-TAU,TAU,-4.71,4.71],
+    params:[{id:'gamma',label:'damping γ',min:0,max:0.8,step:0.01,val:0}],
+    f:(x,y,P)=>[y,-Math.sin(x)-P.gamma*y],
+    div:(x,y,P)=>-P.gamma,
+    blob:{x:0.8,y:1.5,r:0.45},
+    presets:[['Hamiltonian (γ = 0)',{gamma:0}],['damped (γ = 0.15)',{gamma:0.15}]],
+    eq:'q̇ = p = ∂H/∂p, &nbsp; ṗ = −sin q − γp<br><i>H</i> = p²/2 − cos q',
+    divtxt:'∇·f = −γ, the same at every point',
+    watch:P=>{
+      if(P.gamma===0) return `<p><b>Liouville in its natural habitat.</b> The period grows with energy and diverges at the separatrix, so the blob shears into a long filament; part of it librates, part of it rotates. The boundary becomes enormously long, yet the solid and dashed curves stay flat at 0: the fine-grained area is exactly conserved.</p><p>The green curve is the coarse-grained area. It grows and saturates: at finite resolution the blob looks like it has spread over the energy band it started in. That is phase mixing, the miniature version of how coarse-grained (Boltzmann) entropy increases while the fine-grained (Gibbs) entropy −∫ρ ln ρ stays constant. Because H is conserved, the blob can never leave its energy band; a single integrable system mixes only within shells.</p>`;
+      return `<p><b>Uniform contraction.</b> ∇·f = −γ everywhere, so A(t) = A₀e<sup>−γt</sup> no matter how the blob deforms: both curves are straight lines of slope −γ. The blob collapses onto the stable fixed points q = 2πn. Pieces that started on different sides of the separatrix can end in different wells.</p><p>Where did the volume go? Into the bath degrees of freedom you dropped when you wrote −γp. The full system plus bath is Hamiltonian and conserves volume; its projection does not.</p>`;
+    }
+  },
+  duff:{
+    label:'Double well',
+    view:[-2.4,2.4,-1.8,1.8],
+    params:[{id:'gamma',label:'damping γ',min:0,max:0.8,step:0.01,val:0.2}],
+    f:(x,y,P)=>[y,x-x*x*x-P.gamma*y],
+    div:(x,y,P)=>-P.gamma,
+    blob:{x:-1.5,y:1.1,r:0.28},
+    presets:[['Hamiltonian (γ = 0)',{gamma:0}],['damped (γ = 0.2)',{gamma:0.2}]],
+    eq:'ẋ = p, &nbsp; ṗ = x − x³ − γp<br><i>H</i> = p²/2 − x²/2 + x⁴/4',
+    divtxt:'∇·f = −γ, the same at every point',
+    watch:P=>{
+      if(P.gamma===0) return `<p><b>Hamiltonian, with a saddle.</b> Area is conserved, but near the saddle at the origin the blob is stretched exponentially along the unstable direction and compressed along the stable one. Stretching times compression equals one: that's the Hamiltonian bookkeeping (Lyapunov exponents come in ± pairs).</p>`;
+      return `<p><b>Two attractors, two basins.</b> Area shrinks as e<sup>−γt</sup>, and the blob is torn between the wells at x = ±1. The basin boundary is the stable manifold of the saddle, a pair of spirals that interleave more tightly as γ → 0. Near a basin boundary, a tiny change in initial condition decides the final state.</p><p>With noise on, the cloud occasionally hops between wells, at a rate exponentially small in 1/ε: the Kramers law, which Freidlin–Wentzell theory extends to systems without detailed balance.</p>`;
+    }
+  },
+  vdp:{
+    label:'Van der Pol',
+    view:[-5,5,-3.75,3.75],
+    params:[{id:'mu',label:'nonlinearity μ',min:0,max:1.8,step:0.01,val:1}],
+    f:(x,y,P)=>[y,P.mu*(1-x*x)*y-x],
+    div:(x,y,P)=>P.mu*(1-x*x),
+    blob:{x:0.25,y:0.1,r:0.12},
+    presets:[['harmonic (μ = 0)',{mu:0}],['μ = 1',{mu:1}],['μ = 1.8',{mu:1.8}]],
+    eq:'ẋ = y, &nbsp; ẏ = μ(1 − x²)y − x',
+    divtxt:'∇·f = μ(1 − x²): a band |x| < 1 expands, the rest contracts',
+    watch:P=>{
+      if(P.mu===0) return `<p><b>μ = 0 is the harmonic oscillator,</b> Hamiltonian with H = (x² + y²)/2. Same story as panel (a) of the notes: a family of non-isolated periodic orbits.</p>`;
+      return `<p><b>A limit cycle that is not a circle.</b> ∇·f changes sign in space. The blob starts near the unstable origin inside the red band and grows, then gets squeezed onto the cycle. On the cycle the orbit crosses red and blue regions alternately; what makes it attracting is that the <i>time average</i> of ∇·f over one period is negative. In 2D that average is exactly the cycle's Floquet exponent.</p><p>Compare with Hamiltonian flow: there the average of ∇·f over any orbit is zero, which is why no orbit can be isolated and attracting.</p>`;
+    }
+  }
+};
+
+let key='notes', M=MODELS[key], P={};
+const S={t:0,bx:[],by:[],px:null,py:null,lnJ:null,A0:1,Acg0:1,hist:[],capped:false,blob:null};
+const NPTS=3500, MAXB=40000, DT=0.01;
+let running=!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- UI build ---------- */
+function buildModels(){
+  const box=$('models');box.innerHTML='';
+  for(const k in MODELS){
+    const b=document.createElement('button');b.textContent=MODELS[k].label;
+    b.setAttribute('aria-pressed',k===key);b.onclick=()=>setModel(k);box.appendChild(b);
+  }
+}
+function buildParams(){
+  $('eq').innerHTML=M.eq;$('divf').textContent=M.divtxt;
+  const pr=$('presets');pr.innerHTML='';
+  M.presets.forEach(([lab,set])=>{
+    const b=document.createElement('button');b.textContent=lab;
+    b.onclick=()=>{Object.assign(P,set);syncSliders();paramsChanged(true);};pr.appendChild(b);
+  });
+  const box=$('params');box.innerHTML='';
+  M.params.forEach(p=>{
+    const l=document.createElement('label');l.className='sl';
+    l.innerHTML=`<span>${p.label} <output id="o_${p.id}"></output></span><input type="range" id="p_${p.id}" min="${p.min}" max="${p.max}" step="${p.step}">`;
+    box.appendChild(l);
+    const inp=l.querySelector('input');inp.value=P[p.id];
+    inp.oninput=()=>{P[p.id]=parseFloat(inp.value);$('o_'+p.id).textContent=P[p.id].toFixed(2);paramsChanged(false);};
+    $('o_'+p.id).textContent=P[p.id].toFixed(2);
+  });
+}
+function syncSliders(){M.params.forEach(p=>{$('p_'+p.id).value=P[p.id];$('o_'+p.id).textContent=P[p.id].toFixed(2);});}
+function paramsChanged(reset){
+  heatDirty=true;$('watch').innerHTML=M.watch(P)+noiseText();
+  updatePresetState();
+  if(reset) resetBlob();
+}
+function updatePresetState(){
+  const btns=$('presets').children;
+  M.presets.forEach(([lab,set],i)=>{
+    const on=Object.keys(set).every(k=>Math.abs(P[k]-set[k])<1e-9);
+    btns[i].setAttribute('aria-pressed',on);
+  });
+}
+function noiseText(){
+  if(eps()===0) return '';
+  return `<p><b>Noise is on.</b> There is no deterministic boundary any more, so the solid and dashed curves are switched off. The density now obeys Fokker–Planck, ∂ₜρ = −∇·(fρ) + ε∇²ρ, not Liouville. Diffusion fights the contraction, and the cloud settles into a stationary distribution of width ~√ε around the attractors. In the weak-noise limit it takes the form p ∝ e<sup>−U/ε</sup> with U the quasipotential of Sec. II.B.2.c.</p>`;
+}
+function setModel(k){
+  key=k;M=MODELS[k];P={};M.params.forEach(p=>P[p.id]=p.val);
+  S.blob={...M.blob};
+  buildModels();buildParams();paramsChanged(true);
+}
+const eps=()=>parseFloat($('eps').value);
+const radScale=()=>parseFloat($('rad').value);
+
+/* ---------- dynamics ---------- */
+function rk4(x,y,h){
+  const f=M.f;
+  const [a1,b1]=f(x,y,P);
+  const [a2,b2]=f(x+.5*h*a1,y+.5*h*b1,P);
+  const [a3,b3]=f(x+.5*h*a2,y+.5*h*b2,P);
+  const [a4,b4]=f(x+h*a3,y+h*b3,P);
+  return [x+h*(a1+2*a2+2*a3+a4)/6, y+h*(b1+2*b2+2*b3+b4)/6,
+          h*(M.div(x,y,P)+2*M.div(x+.5*h*a1,y+.5*h*b1,P)+2*M.div(x+.5*h*a2,y+.5*h*b2,P)+M.div(x+h*a3,y+h*b3,P))/6];
+}
+function gauss(){let u=0,v=0;while(u===0)u=Math.random();v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v);}
+
+function resetBlob(){
+  const b=S.blob, r=b.r*radScale();
+  S.t=0;S.hist=[];S.capped=false;
+  const n=1500;S.bx=new Array(n);S.by=new Array(n);
+  for(let i=0;i<n;i++){S.bx[i]=b.x+r*Math.cos(TAU*i/n);S.by[i]=b.y+r*Math.sin(TAU*i/n);}
+  S.px=new Float64Array(NPTS);S.py=new Float64Array(NPTS);S.lnJ=new Float64Array(NPTS);
+  for(let i=0;i<NPTS;i++){const rr=r*Math.sqrt(Math.random()),th=TAU*Math.random();S.px[i]=b.x+rr*Math.cos(th);S.py[i]=b.y+rr*Math.sin(th);}
+  S.A0=polyArea();S.Acg0=cgArea();
+  record();
+}
+function polyArea(){
+  const X=S.bx,Y=S.by,n=X.length;let s=0;
+  for(let i=0,j=n-1;i<n;j=i++) s+=(X[j]+X[i])*(Y[j]-Y[i]);
+  return Math.abs(s)/2;
+}
+function cellSize(){const v=M.view;return (v[1]-v[0])/parseInt($('cg').value);}
+let cellSet=new Set();
+function cgArea(){
+  const h=cellSize();cellSet=new Set();
+  for(let i=0;i<NPTS;i++){cellSet.add(Math.floor(S.px[i]/h)+','+Math.floor(S.py[i]/h));}
+  return cellSet.size*h*h;
+}
+function refine(){
+  const v=M.view,thr=(v[1]-v[0])/500,thr2=thr*thr;
+  const X=S.bx,Y=S.by,n=X.length;
+  if(n>=MAXB){S.capped=true;return;}
+  const nx=[],ny=[];let budget=MAXB-n;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;nx.push(X[i]);ny.push(Y[i]);
+    const dx=X[j]-X[i],dy=Y[j]-Y[i];
+    if(budget>0 && dx*dx+dy*dy>thr2){
+      const i0=(i-1+n)%n,i3=(j+1)%n;
+      nx.push((-X[i0]+9*X[i]+9*X[j]-X[i3])/16);ny.push((-Y[i0]+9*Y[i]+9*Y[j]-Y[i3])/16);budget--;
+    }
+  }
+  S.bx=nx;S.by=ny;
+}
+function step(){
+  const e=eps(),sq=Math.sqrt(2*e*DT);
+  if(e===0){
+    const X=S.bx,Y=S.by;
+    for(let i=0;i<X.length;i++){const r=rk4(X[i],Y[i],DT);X[i]=r[0];Y[i]=r[1];}
+    refine();
+  }
+  for(let i=0;i<NPTS;i++){
+    const r=rk4(S.px[i],S.py[i],DT);
+    let x=r[0],y=r[1];
+    if(e>0){x+=sq*gauss();y+=sq*gauss();}
+    S.px[i]=x;S.py[i]=y;S.lnJ[i]+=r[2];
+  }
+  S.t+=DT;
+}
+function record(){
+  const e=eps();let lnA=NaN,lnL=NaN;
+  if(e===0){
+    lnA=Math.log(Math.max(polyArea(),1e-300)/S.A0);
+    let m=-Infinity;for(let i=0;i<NPTS;i++)if(S.lnJ[i]>m)m=S.lnJ[i];
+    let s=0;for(let i=0;i<NPTS;i++)s+=Math.exp(S.lnJ[i]-m);
+    lnL=m+Math.log(s/NPTS);
+  }
+  const lnC=Math.log(cgArea()/S.Acg0);
+  S.hist.push([S.t,lnA,lnL,lnC]);
+  if(S.hist.length>3000) S.hist=S.hist.filter((_,i)=>i%2===0);
+}
+
+/* ---------- theme ---------- */
+let T={};
+function hex2rgb(h){h=h.trim().replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return [n>>16&255,n>>8&255,n&255];}
+function readTheme(){
+  const cs=getComputedStyle(document.documentElement);
+  const g=n=>cs.getPropertyValue(n).trim();
+  const sig=['--canvas','--ink','--contract','--expand','--edge','--cg','--muted','--rule'].map(g).join('|');
+  if(sig!==T.sig){T={sig,canvas:g('--canvas'),ink:g('--ink'),contract:g('--contract'),expand:g('--expand'),edge:g('--edge'),cg:g('--cg'),muted:g('--muted'),rule:g('--rule')};heatDirty=true;}
+}
+
+/* ---------- drawing ---------- */
+const cv=$('phase'),ctx=cv.getContext('2d');
+const ch=$('chart'),cctx=ch.getContext('2d');
+let W=0,H=0,dpr=1,heatDirty=true;
+const heat=document.createElement('canvas');heat.width=200;heat.height=150;
+const hctx=heat.getContext('2d');
+function resize(){
+  dpr=window.devicePixelRatio||1;
+  W=cv.parentElement.clientWidth;H=Math.round(W*0.75);
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';
+  const cw=ch.parentElement.clientWidth-24;ch.width=cw*dpr;ch.height=190*dpr;ch.style.height='190px';
+}
+new ResizeObserver(resize).observe(cv.parentElement);
+const tx=x=>(x-M.view[0])/(M.view[1]-M.view[0])*W;
+const ty=y=>(1-(y-M.view[2])/(M.view[3]-M.view[2]))*H;
+const wx=X=>M.view[0]+X/W*(M.view[1]-M.view[0]);
+const wy=Y=>M.view[2]+(1-Y/H)*(M.view[3]-M.view[2]);
+
+let divMax=0;
+function buildHeat(){
+  const gw=heat.width,gh=heat.height,v=M.view,img=hctx.createImageData(gw,gh);
+  const vals=new Float64Array(gw*gh);divMax=0;
+  for(let j=0;j<gh;j++)for(let i=0;i<gw;i++){
+    const x=v[0]+(i+.5)/gw*(v[1]-v[0]),y=v[3]-(j+.5)/gh*(v[3]-v[2]);
+    const d=M.div(x,y,P);vals[j*gw+i]=d;if(Math.abs(d)>divMax)divMax=Math.abs(d);
+  }
+  const bg=hex2rgb(T.canvas),cn=hex2rgb(T.contract),ex=hex2rgb(T.expand);
+  const sorted=Array.from(vals,Math.abs).sort((a,b)=>a-b);const norm=Math.max(2*sorted[Math.floor(sorted.length*0.5)],1e-12);
+  for(let k=0;k<gw*gh;k++){
+    const d=vals[k],a=divMax<1e-9?0:Math.pow(Math.min(Math.abs(d)/norm,1),0.7)*0.55,c=d<0?cn:ex;
+    img.data[4*k]=bg[0]+(c[0]-bg[0])*a;img.data[4*k+1]=bg[1]+(c[1]-bg[1])*a;img.data[4*k+2]=bg[2]+(c[2]-bg[2])*a;img.data[4*k+3]=255;
+  }
+  hctx.putImageData(img,0,0);
+  $('divscale').textContent=divMax<1e-9?'∇·f = 0 everywhere':`max |∇·f| in view = ${divMax.toFixed(2)}`;
+  heatDirty=false;
+}
+function drawVec(){
+  const nx=26,ny=Math.round(26*0.75),v=M.view;
+  let fmax=0;const arr=[];
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+    const x=v[0]+(i+.5)/nx*(v[1]-v[0]),y=v[2]+(j+.5)/ny*(v[3]-v[2]);
+    const [fx,fy]=M.f(x,y,P);const m=Math.hypot(fx,fy);if(m>fmax)fmax=m;arr.push([x,y,fx,fy,m]);
+  }
+  const L=W/nx*0.42;
+  ctx.strokeStyle=T.muted;ctx.lineWidth=1;ctx.globalAlpha=.55;ctx.beginPath();
+  for(const [x,y,fx,fy,m] of arr){
+    if(m<1e-9)continue;
+    const s=L*Math.pow(m/fmax,0.35),ux=fx/m,uy=-fy/m,X=tx(x),Y=ty(y);
+    const X1=X-ux*s,Y1=Y-uy*s,X2=X+ux*s,Y2=Y+uy*s;
+    ctx.moveTo(X1,Y1);ctx.lineTo(X2,Y2);
+    ctx.moveTo(X2,Y2);ctx.lineTo(X2-ux*4-uy*2.6,Y2-uy*4+ux*2.6);
+    ctx.moveTo(X2,Y2);ctx.lineTo(X2-ux*4+uy*2.6,Y2-uy*4-ux*2.6);
+  }
+  ctx.stroke();ctx.globalAlpha=1;
+}
+let mouse=null;
+function jac(x,y){
+  const h=1e-5,[a,b]=M.f(x+h,y,P),[c,d]=M.f(x-h,y,P),[e,f]=M.f(x,y+h,P),[g,k]=M.f(x,y-h,P);
+  return [[(a-c)/(2*h),(e-g)/(2*h)],[(b-d)/(2*h),(f-k)/(2*h)]];
+}
+function drawHover(){
+  const box=$('hover');
+  if(!mouse){box.style.display='none';return;}
+  const x=wx(mouse[0]),y=wy(mouse[1]),J=jac(x,y);
+  const tr=J[0][0]+J[1][1],om=(J[1][0]-J[0][1])/2;
+  const s11=J[0][0],s22=J[1][1],s12=(J[0][1]+J[1][0])/2;
+  const mid=(s11+s22)/2,rad=Math.sqrt(((s11-s22)/2)**2+s12*s12);
+  box.style.display='block';
+  box.innerHTML=`x = (${x.toFixed(2)}, ${y.toFixed(2)})<br>∇·f = tr J = <b>${tr.toFixed(3)}</b><br>stretch rates (sym. part): ${(mid+rad).toFixed(2)}, ${(mid-rad).toFixed(2)}<br>rotation Ω (antisym. part): ${om.toFixed(3)}`;
+  // image of a small circle under exp(Jτ)
+  const tau=0.35,n=8;let Mx=[[1,0],[0,1]];
+  const A=[[1+J[0][0]*tau/n,J[0][1]*tau/n],[J[1][0]*tau/n,1+J[1][1]*tau/n]];
+  for(let i=0;i<n;i++)Mx=[[A[0][0]*Mx[0][0]+A[0][1]*Mx[1][0],A[0][0]*Mx[0][1]+A[0][1]*Mx[1][1]],[A[1][0]*Mx[0][0]+A[1][1]*Mx[1][0],A[1][0]*Mx[0][1]+A[1][1]*Mx[1][1]]];
+  const rw=28/W*(M.view[1]-M.view[0]);
+  ctx.lineWidth=1.3;ctx.strokeStyle=T.ink;ctx.setLineDash([3,3]);ctx.beginPath();
+  ctx.arc(mouse[0],mouse[1],28,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=T.edge;ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=48;i++){const c=Math.cos(TAU*i/48)*rw,s=Math.sin(TAU*i/48)*rw;
+    const X=tx(x+Mx[0][0]*c+Mx[0][1]*s),Y=ty(y+Mx[1][0]*c+Mx[1][1]*s);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}
+  ctx.stroke();
+}
+function draw(){
+  readTheme();if(heatDirty)buildHeat();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=T.canvas;ctx.fillRect(0,0,W,H);
+  if($('c_div').checked){ctx.imageSmoothingEnabled=true;ctx.drawImage(heat,0,0,W,H);}
+  // axes
+  ctx.strokeStyle=T.rule;ctx.lineWidth=1;ctx.beginPath();
+  ctx.moveTo(tx(0),0);ctx.lineTo(tx(0),H);ctx.moveTo(0,ty(0));ctx.lineTo(W,ty(0));ctx.stroke();
+  if($('c_vec').checked)drawVec();
+  if($('c_cells').checked){
+    const h=cellSize();ctx.fillStyle=T.cg;ctx.globalAlpha=.25;
+    const pw=h/(M.view[1]-M.view[0])*W,ph=h/(M.view[3]-M.view[2])*H;
+    for(const k of cellSet){const [ix,iy]=k.split(',').map(Number);
+      ctx.fillRect(tx(ix*h),ty((iy+1)*h),pw,ph);}
+    ctx.globalAlpha=1;
+  }
+  const noisy=eps()>0;
+  if(!noisy&&$('c_bnd').checked){
+    const X=S.bx,Y=S.by;ctx.beginPath();
+    for(let i=0;i<X.length;i++){const a=tx(X[i]),b=ty(Y[i]);i?ctx.lineTo(a,b):ctx.moveTo(a,b);}
+    ctx.closePath();ctx.fillStyle=T.ink;ctx.globalAlpha=.1;ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle=T.edge;ctx.lineWidth=1.6;ctx.stroke();
+  }
+  if($('c_pts').checked){
+    ctx.fillStyle=T.ink;ctx.globalAlpha=noisy?.7:.45;
+    for(let i=0;i<NPTS;i++)ctx.fillRect(tx(S.px[i])-.7,ty(S.py[i])-.7,1.4,1.4);
+    ctx.globalAlpha=1;
+  }
+  drawHover();
+  drawChart();
+  const last=S.hist[S.hist.length-1]||[0,0,0,0];
+  const fmt=v=>isNaN(v)?'n/a':Math.exp(v).toExponential(3);
+  $('stats').innerHTML=`<div>t = <b>${S.t.toFixed(2)}</b></div>
+    <div>A/A₀ measured: <b>${fmt(last[1])}</b></div>
+    <div>A/A₀ Liouville: <b>${fmt(last[2])}</b></div>
+    <div>coarse-grained: <b>${fmt(last[3])}</b></div>
+    <div>boundary points: ${noisy?'n/a':S.bx.length}</div>`;
+  $('warn').textContent=noisy?'':S.capped?'Boundary resolution limit reached: the measured area may start to drift. Reset to start over.':(last[1]<Math.log(3e-5)?'The blob is now a sliver thinner than the polygon can resolve, so the measured curve has hit its numerical floor. The Liouville curve remains exact.':'');
+}
+function drawChart(){
+  const cw=ch.width/dpr,chh=190,c=cctx;
+  c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle=T.canvas;c.fillRect(0,0,cw,chh);
+  const hs=S.hist;if(hs.length<2)return;
+  const tmax=Math.max(hs[hs.length-1][0],1);
+  let lo=-0.5,hi=0.5;
+  for(const h of hs)for(let k=1;k<4;k++){const v=h[k];if(isFinite(v)){if(v<lo)lo=v;if(v>hi)hi=v;}}
+  lo=Math.max(lo,-60);const pad=(hi-lo)*.08;lo-=pad;hi+=pad;
+  const L=44,R=cw-8,Tp=8,B=chh-24;
+  const X=t=>L+t/tmax*(R-L),Y=v=>B-(v-lo)/(hi-lo)*(B-Tp);
+  c.font='11px '+getComputedStyle(document.body).getPropertyValue('--sans');c.fillStyle=T.muted;c.strokeStyle=T.rule;c.lineWidth=1;
+  // ticks
+  const step=niceStep((hi-lo)/4);
+  c.beginPath();
+  for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step){c.moveTo(L,Y(v));c.lineTo(R,Y(v));c.fillText(Math.abs(v)<1e-9?'0':(+v.toPrecision(3)).toString(),4,Y(v)+4);}
+  c.stroke();
+  const ts=niceStep(tmax/5);
+  for(let t=0;t<=tmax;t+=ts)c.fillText((+t.toPrecision(3)).toString(),X(t)-6,chh-8);
+  c.fillText('t',R-6,chh-8);
+  c.strokeStyle=T.muted;c.beginPath();c.moveTo(L,Y(0));c.lineTo(R,Y(0));c.stroke();
+  const line=(k,col,dash,w)=>{c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash);c.beginPath();let st=false;
+    for(const h of hs){const v=h[k];if(!isFinite(v)){st=false;continue;}const vv=Math.max(v,lo);st?c.lineTo(X(h[0]),Y(vv)):c.moveTo(X(h[0]),Y(vv));st=true;}
+    c.stroke();c.setLineDash([]);};
+  line(3,T.cg,[],2);line(1,T.ink,[],2.4);line(2,T.edge,[6,4],2);
+}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x)));const m=x/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+
+/* ---------- loop & events ---------- */
+function loop(){
+  if(running){const n=parseInt($('spd').value);for(let i=0;i<n;i++)step();record();}
+  draw();requestAnimationFrame(loop);
+}
+cv.addEventListener('pointermove',e=>{const r=cv.getBoundingClientRect();mouse=[e.clientX-r.left,e.clientY-r.top];});
+cv.addEventListener('pointerleave',()=>{mouse=null;});
+cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect();
+  S.blob={x:wx(e.clientX-r.left),y:wy(e.clientY-r.top),r:M.blob.r};resetBlob();$('hint').style.display='none';});
+$('play').onclick=()=>{running=!running;updPlay();};
+function updPlay(){$('play').textContent=running?'Pause':'Play';$('play').setAttribute('aria-pressed',!running);}
+$('reset').onclick=resetBlob;
+const bind=(id,fmt,fn)=>{const el=$(id);const upd=()=>{$('o_'+id).textContent=fmt(parseFloat(el.value));};el.addEventListener('input',()=>{upd();fn&&fn();});upd();};
+bind('rad',v=>'×'+v.toFixed(2),resetBlob);
+bind('eps',v=>v.toFixed(3),()=>{$('watch').innerHTML=M.watch(P)+noiseText();resetBlob();});
+bind('cg',v=>v.toFixed(0),()=>{S.Acg0=NaN;resetBlob();});
+bind('spd',v=>v.toFixed(0)+' steps/frame');
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{heatDirty=true;});
+
+resize();setModel('notes');updPlay();loop();
+})();
+</script>
+</body>
+</html>
