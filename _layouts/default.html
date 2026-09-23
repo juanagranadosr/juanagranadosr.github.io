@@ -10,6 +10,9 @@
     {% if page.url == "/404.html" %}
         <meta http-equiv="refresh" content="5; url=/">
     {% endif %}
+    {% if page.noindex %}
+        <meta name="robots" content="noindex, nofollow">
+    {% endif %}
     {% if page.description %}
         {% assign desc = page.description %}
     {% else %}
