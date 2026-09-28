@@ -11,7 +11,3 @@ Small, self-contained interactive visualizations for building intuition about id
 * **[Phase-Space Volume, Liouville, and Attractors](phase-space/phase_space_volume.html)** — drop a blob of initial conditions into a phase portrait and watch Liouville's theorem, attractors, and phase-space contraction play out. Built as intuition for Fruchart & Vitelli, "Nonreciprocal many-body physics."
 
 * **[The One-Dimensional Crystal](one-dim-crystal/one-dimensional-crystal.html)** — a chain of atoms and springs between fixed walls: pluck, drag, or excite a normal mode directly and watch the spectrum fill up without ever crossing the dispersion ceiling at 2ω.
-
----
-
-<small><em>This is a small side project I do together with my friend <a href="https://github.com/PaoloGari96">Paolo Garmiberti</a> — we build these to make sense of ideas we're curious about, one small program at a time.</em></small>
