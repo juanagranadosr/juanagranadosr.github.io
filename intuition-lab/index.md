@@ -1,7 +1,6 @@
 ---
 layout: default
 title: "Intuition Lab"
-noindex: true
 ---
 ### Intuition Lab
 

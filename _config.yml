@@ -25,5 +25,7 @@ nav:
  #  link: "/researcher/"
  - name: "Resume"
    link: "resume.pdf"
+ - name: "Intuition Lab"
+   link: "intuition-lab/"
  - name: "Contact"
    link: "contact"
