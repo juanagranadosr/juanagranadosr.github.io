@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The one-dimensional crystal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#DFE4E1;
+    --paper-deep:#CFD7D3;
+    --panel:#EAEEEB;
+    --ink:#14201F;
+    --ink-soft:#4C5C59;
+    --rule:#A9B6B1;
+    --atom:#23383C;
+    --stretch:#B8402C;
+    --compress:#1F6F78;
+    --amber:#D99A18;
+    --focus:#1F6F78;
+  }
+
+  *{box-sizing:border-box}
+
+  html{-webkit-text-size-adjust:100%}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Spectral",Georgia,"Times New Roman",serif;
+    font-weight:300;
+    font-size:17px;
+    line-height:1.6;
+  }
+
+  .wrap{
+    max-width:1080px;
+    margin:0 auto;
+    padding:clamp(24px,4vw,56px) clamp(16px,4vw,40px) 80px;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    display:flex;
+    align-items:baseline;
+    gap:18px;
+    flex-wrap:wrap;
+    border-bottom:1px solid var(--rule);
+    padding-bottom:14px;
+    margin-bottom:6px;
+  }
+  h1{
+    font-weight:600;
+    font-size:clamp(28px,5vw,44px);
+    line-height:1.04;
+    letter-spacing:-0.015em;
+    margin:0;
+  }
+  h1 em{
+    font-style:italic;
+    font-weight:400;
+  }
+  .masthead p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:16px;
+    max-width:34ch;
+  }
+
+  .lede{
+    max-width:68ch;
+    margin:18px 0 26px;
+    font-size:18px;
+  }
+
+  /* ---------- stage ---------- */
+  .stage{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:2px;
+  }
+  #chain{
+    display:block;
+    width:100%;
+    height:320px;
+    touch-action:none;
+    cursor:grab;
+  }
+  #chain.grabbing{cursor:grabbing}
+
+  .stage-note{
+    position:absolute;
+    left:14px;
+    bottom:10px;
+    font-size:13px;
+    color:var(--ink-soft);
+    font-family:"Inter",system-ui,sans-serif;
+    pointer-events:none;
+  }
+
+  .legend{
+    position:absolute;
+    right:14px;
+    top:12px;
+    display:flex;
+    gap:16px;
+    font-family:"Inter",system-ui,sans-serif;
+    font-size:12px;
+    color:var(--ink-soft);
+    pointer-events:none;
+  }
+  .legend span{display:flex;align-items:center;gap:6px}
+  .swatch{width:16px;height:3px;border-radius:2px;display:inline-block}
+
+  /* ---------- controls ---------- */
+  .console{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:22px 30px;
+    padding:20px 0 26px;
+    border-bottom:1px solid var(--rule);
+  }
+  .group{display:flex;flex-direction:column;gap:9px}
+  .group h2{
+    font-family:"Inter",system-ui,sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    color:var(--ink-soft);
+    margin:0;
+  }
+  .row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+
+  button{
+    font-family:"Inter",system-ui,sans-serif;
+    font-size:13px;
+    font-weight:500;
+    color:var(--ink);
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:2px;
+    padding:6px 11px;
+    cursor:pointer;
+  }
+  button:hover{background:#fff}
+  button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  button.on{background:var(--atom);border-color:var(--atom);color:var(--panel)}
+  button.mode{min-width:34px;padding:6px 8px}
+  button.mode.on{background:var(--amber);border-color:#B87F10;color:#22190A}
+
+  .slider{display:flex;align-items:center;gap:10px}
+  .slider label{
+    font-family:"Inter",system-ui,sans-serif;
+    font-size:13px;
+    color:var(--ink-soft);
+    min-width:82px;
+  }
+  .slider output{
+    font-family:"Inter",system-ui,sans-serif;
+    font-size:13px;
+    font-variant-numeric:tabular-nums;
+    min-width:34px;
+    text-align:right;
+  }
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    flex:1;height:18px;background:transparent;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--rule)}
+  input[type=range]::-moz-range-track{height:2px;background:var(--rule)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--atom);margin-top:-6px;border:none;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--atom);border:none;
+  }
+  input[type=range]:focus-visible{outline:2px solid var(--focus);outline-offset:4px}
+
+  /* ---------- panels ---------- */
+  .panels{
+    display:grid;
+    grid-template-columns:1.15fr 1fr;
+    gap:34px;
+    padding-top:28px;
+  }
+  @media (max-width:760px){ .panels{grid-template-columns:1fr} }
+
+  .panel h2{
+    font-family:"Inter",system-ui,sans-serif;
+    font-size:13px;
+    font-weight:600;
+    margin:0 0 4px;
+  }
+  .panel p.cap{
+    margin:0 0 14px;
+    font-size:15px;
+    color:var(--ink-soft);
+    max-width:46ch;
+  }
+  #spectrum{
+    display:block;width:100%;height:190px;
+    background:var(--panel);
+    border:1px solid var(--rule);
+    cursor:pointer;
+  }
+
+  /* ---------- inspector ---------- */
+  .ledger{
+    border-top:1px solid var(--rule);
+    font-family:"Inter",system-ui,sans-serif;
+    font-size:14px;
+    font-variant-numeric:tabular-nums;
+  }
+  .ledger div{
+    display:flex;justify-content:space-between;gap:12px;
+    padding:7px 0;border-bottom:1px solid var(--paper-deep);
+  }
+  .ledger .k{color:var(--ink-soft)}
+  .ledger .v{font-weight:500}
+  .ledger .net .v{font-weight:600}
+  .pos{color:var(--stretch)}
+  .neg{color:var(--compress)}
+
+  .energy{margin-top:18px}
+  .bar{
+    display:flex;height:12px;width:100%;
+    border:1px solid var(--rule);background:var(--panel);overflow:hidden;
+  }
+  .bar i{display:block;height:100%}
+  #keBar{background:var(--compress)}
+  #peBar{background:var(--stretch)}
+  .barkey{
+    display:flex;justify-content:space-between;
+    font-family:"Inter",system-ui,sans-serif;font-size:12.5px;
+    color:var(--ink-soft);margin-top:6px;font-variant-numeric:tabular-nums;
+  }
+
+  /* ---------- notes ---------- */
+  .notes{
+    margin-top:52px;padding-top:26px;border-top:1px solid var(--rule);
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:30px 40px;
+  }
+  .notes h3{
+    font-size:19px;font-weight:600;margin:0 0 8px;letter-spacing:-0.01em;
+  }
+  .notes p{margin:0 0 10px;font-size:16.5px;max-width:44ch}
+  .eq{
+    font-family:"Spectral",Georgia,serif;font-style:italic;
+    font-size:17px;background:var(--panel);border-left:2px solid var(--atom);
+    padding:9px 13px;margin:10px 0;display:block;line-height:1.5;
+  }
+  .notes em{font-style:italic}
+
+  @media (prefers-reduced-motion:reduce){
+    *{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>The one&#8209;dimensional <em>crystal</em></h1>
+    <p>N atoms, N+1 springs, two fixed walls.</p>
+  </header>
+
+  <p class="lede">Every atom feels only its two neighbours. Pull one out of place and it pulls on the next, which pulls on the next. Drag any atom below and let go.</p>
+
+  <section class="stage">
+    <canvas id="chain" aria-label="Chain of atoms connected by springs between two fixed walls"></canvas>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--stretch)"></i>spring stretched</span>
+      <span><i class="swatch" style="background:var(--compress)"></i>spring compressed</span>
+    </div>
+    <p class="stage-note" id="stageNote">Drag an atom sideways, then release.</p>
+  </section>
+
+  <section class="console">
+    <div class="group">
+      <h2>Motion</h2>
+      <div class="row">
+        <button id="playBtn" class="on">Pause</button>
+        <button id="restBtn">Bring to rest</button>
+      </div>
+      <div class="slider">
+        <label for="speed">Speed</label>
+        <input type="range" id="speed" min="0.1" max="2.5" step="0.05" value="1">
+        <output id="speedOut">1.00</output>
+      </div>
+      <div class="slider">
+        <label for="damp">Friction</label>
+        <input type="range" id="damp" min="0" max="0.5" step="0.01" value="0">
+        <output id="dampOut">0.00</output>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>The chain</h2>
+      <div class="slider">
+        <label for="nAtoms">Atoms N</label>
+        <input type="range" id="nAtoms" min="2" max="40" step="1" value="12">
+        <output id="nOut">12</output>
+      </div>
+      <div class="row">
+        <button id="axisBtn">Show as sideways wave</button>
+      </div>
+      <div class="row">
+        <button id="forceBtn" class="on">Hide force arrows</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Start it moving</h2>
+      <div class="row">
+        <button id="pluckBtn">Pluck one atom</button>
+        <button id="randBtn">Shake randomly</button>
+      </div>
+      <h2 style="margin-top:6px">Or excite a single normal mode</h2>
+      <div class="row" id="modeRow"></div>
+    </div>
+  </section>
+
+  <section class="panels">
+    <div class="panel">
+      <h2>Where the energy sits</h2>
+      <p class="cap">Each bar is one normal mode, placed at its own frequency. A pluck lights up many at once; a mode button lights up exactly one. Click a bar to jump to that mode.</p>
+      <canvas id="spectrum" aria-label="Energy held in each normal mode, plotted against frequency"></canvas>
+      <p class="cap" style="margin-top:10px">No bar ever crosses the dashed line at 2&#969;. That ceiling is the whole point of part (c).</p>
+    </div>
+
+    <div class="panel">
+      <h2>Force on one atom</h2>
+      <p class="cap">Tap an atom to follow it. Its two springs push and pull independently; only their sum moves it.</p>
+      <div class="ledger" id="ledger">
+        <div><span class="k">atom</span><span class="v" id="selIdx">6</span></div>
+        <div><span class="k">pull from the left spring</span><span class="v" id="fL">0.000</span></div>
+        <div><span class="k">pull from the right spring</span><span class="v" id="fR">0.000</span></div>
+        <div class="net"><span class="k">net force</span><span class="v" id="fNet">0.000</span></div>
+        <div><span class="k">its displacement &#958;</span><span class="v" id="xiVal">0.000</span></div>
+      </div>
+
+      <div class="energy">
+        <h2>Total energy, kept constant</h2>
+        <div class="bar"><i id="keBar" style="width:0%"></i><i id="peBar" style="width:0%"></i></div>
+        <div class="barkey">
+          <span>motion <b id="keTxt">0%</b></span>
+          <span>stored in springs <b id="peTxt">0%</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h3>What the model says</h3>
+      <p>Write &#958;<sub>i</sub> for how far atom <em>i</em> has moved from its resting site. The spring on its right is stretched by &#958;<sub>i+1</sub> &#8722; &#958;<sub>i</sub>, the one on its left by &#958;<sub>i</sub> &#8722; &#958;<sub>i&#8722;1</sub>. Newton's law is the difference of the two:</p>
+      <span class="eq">m &#958;&#776;<sub>i</sub> = k(&#958;<sub>i+1</sub> &#8722; 2&#958;<sub>i</sub> + &#958;<sub>i&#8722;1</sub>)</span>
+      <p>The walls enter as &#958;<sub>0</sub> = &#958;<sub>N+1</sub> = 0. That &#8722;2 on the diagonal and the 1s off it are exactly the matrix <em>V</em> = 2I<sub>N</sub> &#8722; B from the problem.</p>
+    </div>
+    <div>
+      <h3>Why modes exist</h3>
+      <p>Nothing in the equation moves one atom alone, yet there are special starting shapes that keep their shape forever and simply breathe in and out. They are the eigenvectors of <em>V</em>:</p>
+      <span class="eq">&#958;<sub>i</sub> &#8733; sin(n&#960;i / (N+1)),&#8195; n = 1 &#8230; N</span>
+      <p>Try mode 1 and then mode 5. Every atom shares one frequency; only the shape changes.</p>
+    </div>
+    <div>
+      <h3>The ceiling at 2&#969;</h3>
+      <p>Each mode's frequency comes out as</p>
+      <span class="eq">&#969;<sub>n</sub> = 2&#969; sin(n&#960; / 2(N+1)),&#8195; &#969; = &#8730;(k/m)</span>
+      <p>The sine cannot exceed 1, so no mode of any chain, however long, oscillates faster than 2&#969;. Raise N to 40 and watch the bars crowd up against the line without touching it. A real crystal with N &#8776; 10<sup>8</sup> fills that band almost continuously.</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- state ---------------- */
+  var N = 12;
+  var xi, vel, acc, acc2;          // index 0..N+1, ends pinned at 0
+  var OMEGA = 1, OMEGA2 = 1;       // work in units where sqrt(k/m) = 1
+  var dt = 0.012;
+  var speed = 1, damping = 0;
+  var running = true;
+  var showForces = true;
+  var transverse = false;
+  var selected = 6;
+  var dragIdx = -1, dragVal = 0;
+  var MAXXI = 1;                   // |xi| = 1 means 0.4 of a lattice spacing
+  var DISP = 0.40;
+
+  var chain = document.getElementById('chain');
+  var cctx = chain.getContext('2d');
+  var spec = document.getElementById('spectrum');
+  var sctx = spec.getContext('2d');
+
+  var css = getComputedStyle(document.documentElement);
+  function C(name){ return css.getPropertyValue(name).trim(); }
+  var INK = C('--ink'), INKS = C('--ink-soft'), RULE = C('--rule'),
+      ATOM = C('--atom'), STRETCH = C('--stretch'), COMPRESS = C('--compress'),
+      AMBER = C('--amber'), PAPERD = C('--paper-deep'), PANEL = C('--panel');
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- setup ---------------- */
+  function allocate(n){
+    N = n;
+    xi   = new Float64Array(N+2);
+    vel  = new Float64Array(N+2);
+    acc  = new Float64Array(N+2);
+    acc2 = new Float64Array(N+2);
+    selected = Math.min(selected, N);
+    if(selected < 1) selected = 1;
+    buildModeButtons();
+    buildSinTable();
+  }
+
+  var SIN = null, modeFreq = null;
+  function buildSinTable(){
+    var M = N;
+    SIN = new Float64Array((M+1)*(N+2));
+    modeFreq = new Float64Array(M+1);
+    for(var n=1;n<=M;n++){
+      modeFreq[n] = 2*OMEGA*Math.sin(n*Math.PI/(2*(N+1)));
+      for(var i=1;i<=N;i++){
+        SIN[n*(N+2)+i] = Math.sin(n*Math.PI*i/(N+1));
+      }
+    }
+  }
+
+  /* ---------------- physics ---------------- */
+  function computeAcc(pos, out){
+    for(var i=1;i<=N;i++){
+      out[i] = OMEGA2*(pos[i-1] - 2*pos[i] + pos[i+1]);
+    }
+  }
+
+  function step(h){
+    computeAcc(xi, acc);
+    for(var i=1;i<=N;i++){
+      xi[i] += vel[i]*h + 0.5*acc[i]*h*h;
+    }
+    computeAcc(xi, acc2);
+    var f = 1 - damping*h;
+    for(i=1;i<=N;i++){
+      vel[i] = (vel[i] + 0.5*(acc[i]+acc2[i])*h)*f;
+    }
+    if(dragIdx > 0){ xi[dragIdx] = dragVal; vel[dragIdx] = 0; }
+    // safety clamp so a wild drag can never blow the integrator up
+    for(i=1;i<=N;i++){
+      if(xi[i] >  2.2){ xi[i] =  2.2; vel[i] = 0; }
+      if(xi[i] < -2.2){ xi[i] = -2.2; vel[i] = 0; }
+    }
+  }
+
+  /* ---------------- excitations ---------------- */
+  var activeMode = 0;
+
+  function clearState(){
+    for(var i=0;i<=N+1;i++){ xi[i]=0; vel[i]=0; }
+  }
+
+  function setMode(n){
+    clearState();
+    var amp = 0.72;
+    for(var i=1;i<=N;i++) xi[i] = amp*SIN[n*(N+2)+i];
+    activeMode = n;
+    markModeButtons();
+  }
+
+  function pluck(){
+    clearState();
+    var i0 = Math.max(1, Math.round(N*0.3));
+    xi[i0] = 0.9;
+    activeMode = 0; markModeButtons();
+  }
+
+  function shake(){
+    clearState();
+    for(var i=1;i<=N;i++) xi[i] = (Math.random()*2-1)*0.55;
+    activeMode = 0; markModeButtons();
+  }
+
+  /* ---------------- geometry ---------------- */
+  var W = 0, H = 0, spacing = 0, x0 = 0, baseY = 0, radius = 6;
+
+  function layout(canvas, ctx, cssH){
+    var dpr = window.devicePixelRatio || 1;
+    var r = canvas.getBoundingClientRect();
+    canvas.width  = Math.max(1, Math.round(r.width*dpr));
+    canvas.height = Math.max(1, Math.round(cssH*dpr));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {w:r.width, h:cssH};
+  }
+
+  function measureChain(){
+    var d = layout(chain, cctx, chain.clientHeight || 320);
+    W = d.w; H = d.h;
+    var margin = 26;
+    spacing = (W - 2*margin)/(N+1);
+    x0 = margin;
+    baseY = H/2;
+    radius = Math.max(3.2, Math.min(spacing*0.24, 13));
+  }
+
+  function atomPos(i){
+    var restX = x0 + i*spacing;
+    var d = xi[i]*spacing*DISP;
+    if(transverse) return {x:restX, y:baseY + d};
+    return {x:restX + d, y:baseY};
+  }
+
+  /* ---------------- drawing the chain ---------------- */
+  function coil(ctx, ax, ay, bx, by, amp, turns){
+    var dx = bx-ax, dy = by-ay;
+    var len = Math.hypot(dx,dy) || 1e-6;
+    var ux = dx/len, uy = dy/len;
+    var nx = -uy, ny = ux;
+    var lead = Math.min(len*0.16, 9);
+    var segs = turns*12;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax+ux*lead, ay+uy*lead);
+    for(var s=0;s<=segs;s++){
+      var t = s/segs;
+      var along = lead + t*(len-2*lead);
+      var off = Math.sin(t*turns*2*Math.PI)*amp;
+      ctx.lineTo(ax+ux*along+nx*off, ay+uy*along+ny*off);
+    }
+    ctx.lineTo(bx-ux*lead, by-uy*lead);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+  }
+
+  function strainColor(s){
+    // s > 0 stretched, s < 0 compressed
+    var m = Math.min(1, Math.abs(s)*2.2);
+    var a = 0.28 + 0.72*m;
+    if(s >= 0) return 'rgba(184,64,44,'+a.toFixed(3)+')';
+    return 'rgba(31,111,120,'+a.toFixed(3)+')';
+  }
+
+  function wall(ctx, x, y, w, h){
+    ctx.fillStyle = PAPERD;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = RULE; ctx.lineWidth = 1;
+    ctx.strokeRect(x+0.5, y+0.5, w-1, h-1);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+    ctx.strokeStyle = 'rgba(76,92,89,0.45)';
+    for(var o=-h; o<w+h; o+=7){
+      ctx.beginPath();
+      ctx.moveTo(x+o, y+h);
+      ctx.lineTo(x+o+h, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function arrow(ctx, x, y, dx, dy, color){
+    var len = Math.hypot(dx,dy);
+    if(len < 1.2) return;
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+dx,y+dy); ctx.stroke();
+    var ux = dx/len, uy = dy/len, hs = Math.min(6, len*0.45);
+    ctx.beginPath();
+    ctx.moveTo(x+dx, y+dy);
+    ctx.lineTo(x+dx-ux*hs - uy*hs*0.55, y+dy-uy*hs + ux*hs*0.55);
+    ctx.lineTo(x+dx-ux*hs + uy*hs*0.55, y+dy-uy*hs - ux*hs*0.55);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawChain(){
+    cctx.clearRect(0,0,W,H);
+
+    // rest-position ticks
+    cctx.strokeStyle = 'rgba(169,182,177,0.85)';
+    cctx.lineWidth = 1;
+    for(var i=1;i<=N;i++){
+      var rx = Math.round(x0 + i*spacing)+0.5;
+      cctx.beginPath();
+      cctx.moveTo(rx, baseY+radius+8);
+      cctx.lineTo(rx, baseY+radius+13);
+      cctx.stroke();
+    }
+
+    // walls
+    var wallW = 12, wallH = Math.min(H*0.52, 150);
+    wall(cctx, x0-wallW, baseY-wallH/2, wallW, wallH);
+    wall(cctx, x0+(N+1)*spacing, baseY-wallH/2, wallW, wallH);
+
+    // springs
+    var amp = Math.max(3, Math.min(spacing*0.16, 10));
+    var turns = Math.max(3, Math.min(7, Math.round(spacing/13)));
+    cctx.lineWidth = Math.max(1.2, Math.min(2.1, spacing*0.05));
+    cctx.lineJoin = 'round';
+    for(i=0;i<=N;i++){
+      var a = atomPos(i), b = atomPos(i+1);
+      var strain = (xi[i+1]-xi[i])*DISP;   // fraction of rest length
+      cctx.strokeStyle = strainColor(strain);
+      coil(cctx, a.x, a.y, b.x, b.y, amp, turns);
+    }
+
+    // force arrows
+    if(showForces){
+      var gain = spacing*DISP*1.35;
+      for(i=1;i<=N;i++){
+        var p = atomPos(i);
+        var F = (xi[i-1]-2*xi[i]+xi[i+1]);
+        var d = F*gain;
+        if(transverse) arrow(cctx, p.x, p.y, 0, d, 'rgba(20,32,31,0.55)');
+        else           arrow(cctx, p.x, p.y-radius-4, d, 0, 'rgba(20,32,31,0.55)');
+      }
+    }
+
+    // atoms
+    for(i=1;i<=N;i++){
+      var q = atomPos(i);
+      cctx.beginPath();
+      cctx.arc(q.x, q.y, radius, 0, Math.PI*2);
+      cctx.fillStyle = ATOM;
+      cctx.fill();
+      if(i === selected){
+        cctx.beginPath();
+        cctx.arc(q.x, q.y, radius+4.5, 0, Math.PI*2);
+        cctx.strokeStyle = AMBER; cctx.lineWidth = 2.2; cctx.stroke();
+      }
+    }
+
+    // wall labels
+    cctx.fillStyle = INKS;
+    cctx.font = '12px Inter, system-ui, sans-serif';
+    cctx.textAlign = 'left';
+    cctx.fillText('fixed', x0-wallW, baseY-wallH/2-8);
+    cctx.textAlign = 'right';
+    cctx.fillText('fixed', x0+(N+1)*spacing+wallW, baseY-wallH/2-8);
+    cctx.textAlign = 'left';
+  }
+
+  /* ---------------- spectrum ---------------- */
+  var modeE = null, modeEMax = 1;
+
+  function analyse(){
+    if(!modeE || modeE.length !== N+1) modeE = new Float64Array(N+1);
+    var norm = Math.sqrt(2/(N+1));
+    var maxE = 1e-9;
+    for(var n=1;n<=N;n++){
+      var a=0,b=0, base=n*(N+2);
+      for(var i=1;i<=N;i++){
+        var s = SIN[base+i];
+        a += xi[i]*s;
+        b += vel[i]*s;
+      }
+      a*=norm; b*=norm;
+      var w = modeFreq[n];
+      var E = 0.5*(b*b + w*w*a*a);
+      modeE[n] = E;
+      if(E > maxE) maxE = E;
+    }
+    modeEMax = maxE;
+  }
+
+  var SW=0, SH=0;
+  function measureSpec(){
+    var d = layout(spec, sctx, spec.clientHeight || 190);
+    SW = d.w; SH = d.h;
+  }
+
+  function drawSpectrum(){
+    sctx.clearRect(0,0,SW,SH);
+    var padL = 14, padR = 40, padB = 30, padT = 14;
+    var plotW = SW - padL - padR, plotH = SH - padT - padB;
+    var wMax = 2.18;                       // a little headroom past 2 omega
+    function X(w){ return padL + (w/wMax)*plotW; }
+
+    // baseline
+    sctx.strokeStyle = RULE; sctx.lineWidth = 1;
+    sctx.beginPath();
+    sctx.moveTo(padL, SH-padB+0.5); sctx.lineTo(SW-padR+18, SH-padB+0.5);
+    sctx.stroke();
+
+    // the 2 omega ceiling
+    var xc = X(2);
+    sctx.save();
+    sctx.setLineDash([5,4]);
+    sctx.strokeStyle = INK; sctx.lineWidth = 1.2;
+    sctx.beginPath(); sctx.moveTo(xc, padT-4); sctx.lineTo(xc, SH-padB); sctx.stroke();
+    sctx.restore();
+    sctx.fillStyle = INK;
+    sctx.font = '12px Inter, system-ui, sans-serif';
+    sctx.fillText('2\u03C9', xc+6, padT+6);
+
+    sctx.fillStyle = INKS;
+    sctx.fillText('0', padL-2, SH-padB+17);
+    sctx.fillText('\u03C9', X(1)-3, SH-padB+17);
+    sctx.fillText('frequency \u03C9\u2099', padL, SH-4);
+
+    // bars
+    var barW = Math.max(2, Math.min(10, plotW/(N*1.7)));
+    var scale = Math.max(modeEMax, 1e-6);
+    for(var n=1;n<=N;n++){
+      var x = X(modeFreq[n]);
+      var h = Math.max(1, (modeE[n]/scale)*plotH);
+      var on = (activeMode === n);
+      sctx.fillStyle = on ? AMBER : 'rgba(35,56,60,0.78)';
+      sctx.fillRect(x-barW/2, SH-padB-h, barW, h);
+      // tick for every mode, so you see the frequencies crowd up
+      sctx.fillStyle = 'rgba(76,92,89,0.5)';
+      sctx.fillRect(x-0.5, SH-padB+1, 1, 4);
+    }
+  }
+
+  function specClick(ev){
+    var r = spec.getBoundingClientRect();
+    var mx = ev.clientX - r.left;
+    var padL = 14, padR = 40, plotW = SW - padL - padR, wMax = 2.18;
+    var wq = ((mx-padL)/plotW)*wMax;
+    var best = 1, bd = Infinity;
+    for(var n=1;n<=N;n++){
+      var d = Math.abs(modeFreq[n]-wq);
+      if(d < bd){ bd = d; best = n; }
+    }
+    setMode(best);
+    if(!running) toggleRun(true);
+  }
+  spec.addEventListener('click', specClick);
+
+  /* ---------------- readouts ---------------- */
+  var elSel=document.getElementById('selIdx'), elFL=document.getElementById('fL'),
+      elFR=document.getElementById('fR'), elFN=document.getElementById('fNet'),
+      elXi=document.getElementById('xiVal'),
+      keBar=document.getElementById('keBar'), peBar=document.getElementById('peBar'),
+      keTxt=document.getElementById('keTxt'), peTxt=document.getElementById('peTxt');
+
+  function sign(el, v){
+    el.textContent = (v>=0?'+':'\u2212') + Math.abs(v).toFixed(3);
+    el.className = 'v ' + (v>=0 ? 'pos' : 'neg');
+  }
+
+  function updateReadouts(){
+    var i = selected;
+    var fL = -(xi[i]-xi[i-1]);
+    var fR =  (xi[i+1]-xi[i]);
+    elSel.textContent = i;
+    sign(elFL, fL); sign(elFR, fR); sign(elFN, fL+fR);
+    sign(elXi, xi[i]);
+
+    var ke=0, pe=0;
+    for(var j=1;j<=N;j++) ke += 0.5*vel[j]*vel[j];
+    for(j=0;j<=N;j++){ var d = xi[j+1]-xi[j]; pe += 0.5*d*d; }
+    var tot = ke+pe;
+    var kp = tot>1e-9 ? ke/tot*100 : 0;
+    keBar.style.width = kp.toFixed(1)+'%';
+    peBar.style.width = (100-kp).toFixed(1)+'%';
+    keTxt.textContent = Math.round(kp)+'%';
+    peTxt.textContent = Math.round(100-kp)+'%';
+  }
+
+  /* ---------------- interaction ---------------- */
+  function nearestAtom(mx,my){
+    var best=-1, bd=Infinity;
+    for(var i=1;i<=N;i++){
+      var p = atomPos(i);
+      var d = Math.hypot(p.x-mx, p.y-my);
+      if(d<bd){ bd=d; best=i; }
+    }
+    return {i:best, d:bd};
+  }
+
+  function pointerDown(ev){
+    var r = chain.getBoundingClientRect();
+    var mx = ev.clientX-r.left, my = ev.clientY-r.top;
+    var hit = nearestAtom(mx,my);
+    if(hit.d < Math.max(18, radius*2.6)){
+      selected = hit.i;
+      dragIdx = hit.i;
+      dragVal = xi[hit.i];
+      activeMode = 0; markModeButtons();
+      chain.classList.add('grabbing');
+      chain.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    }
+  }
+  function pointerMove(ev){
+    if(dragIdx < 0) return;
+    var r = chain.getBoundingClientRect();
+    var mx = ev.clientX-r.left, my = ev.clientY-r.top;
+    var restX = x0 + dragIdx*spacing;
+    var raw = transverse ? (my-baseY) : (mx-restX);
+    var val = raw/(spacing*DISP);
+    dragVal = Math.max(-MAXXI, Math.min(MAXXI, val));
+    xi[dragIdx] = dragVal; vel[dragIdx] = 0;
+  }
+  function pointerUp(){
+    dragIdx = -1;
+    chain.classList.remove('grabbing');
+  }
+  chain.addEventListener('pointerdown', pointerDown);
+  chain.addEventListener('pointermove', pointerMove);
+  window.addEventListener('pointerup', pointerUp);
+  window.addEventListener('pointercancel', pointerUp);
+
+  /* ---------------- controls ---------------- */
+  var playBtn = document.getElementById('playBtn');
+  function toggleRun(force){
+    running = (typeof force === 'boolean') ? force : !running;
+    playBtn.textContent = running ? 'Pause' : 'Play';
+    playBtn.classList.toggle('on', running);
+  }
+  playBtn.addEventListener('click', function(){ toggleRun(); });
+
+  document.getElementById('restBtn').addEventListener('click', function(){
+    clearState(); activeMode = 0; markModeButtons();
+  });
+
+  var speedEl = document.getElementById('speed'), speedOut = document.getElementById('speedOut');
+  speedEl.addEventListener('input', function(){
+    speed = parseFloat(speedEl.value);
+    speedOut.textContent = speed.toFixed(2);
+  });
+
+  var dampEl = document.getElementById('damp'), dampOut = document.getElementById('dampOut');
+  dampEl.addEventListener('input', function(){
+    damping = parseFloat(dampEl.value);
+    dampOut.textContent = damping.toFixed(2);
+  });
+
+  var nEl = document.getElementById('nAtoms'), nOut = document.getElementById('nOut');
+  nEl.addEventListener('input', function(){
+    var n = parseInt(nEl.value,10);
+    nOut.textContent = n;
+    var keep = activeMode;
+    allocate(n);
+    measureChain();
+    if(keep && keep <= N) setMode(keep); else pluck();
+  });
+
+  var axisBtn = document.getElementById('axisBtn');
+  axisBtn.addEventListener('click', function(){
+    transverse = !transverse;
+    axisBtn.textContent = transverse ? 'Show as true motion along the line' : 'Show as sideways wave';
+    axisBtn.classList.toggle('on', transverse);
+    document.getElementById('stageNote').textContent = transverse
+      ? 'Drag an atom up or down, then release. Real atoms move along the line, but the shape is easier to read this way.'
+      : 'Drag an atom sideways, then release.';
+  });
+
+  var forceBtn = document.getElementById('forceBtn');
+  forceBtn.addEventListener('click', function(){
+    showForces = !showForces;
+    forceBtn.textContent = showForces ? 'Hide force arrows' : 'Show force arrows';
+    forceBtn.classList.toggle('on', showForces);
+  });
+
+  document.getElementById('pluckBtn').addEventListener('click', function(){ pluck(); toggleRun(true); });
+  document.getElementById('randBtn').addEventListener('click', function(){ shake(); toggleRun(true); });
+
+  var modeRow = document.getElementById('modeRow');
+  function buildModeButtons(){
+    modeRow.innerHTML = '';
+    var count = Math.min(N, 8);
+    for(var n=1;n<=count;n++){
+      (function(n){
+        var b = document.createElement('button');
+        b.className = 'mode';
+        b.textContent = n;
+        b.setAttribute('aria-label','Excite normal mode '+n);
+        b.addEventListener('click', function(){ setMode(n); toggleRun(true); });
+        modeRow.appendChild(b);
+      })(n);
+    }
+    var hi = document.createElement('button');
+    hi.className = 'mode';
+    hi.textContent = 'highest';
+    hi.setAttribute('aria-label','Excite the highest normal mode');
+    hi.addEventListener('click', function(){ setMode(N); toggleRun(true); });
+    modeRow.appendChild(hi);
+  }
+  function markModeButtons(){
+    var btns = modeRow.querySelectorAll('button');
+    for(var j=0;j<btns.length;j++){
+      var label = btns[j].textContent;
+      var n = (label === 'highest') ? N : parseInt(label,10);
+      btns[j].classList.toggle('on', activeMode === n && activeMode !== 0);
+    }
+  }
+
+  /* ---------------- loop ---------------- */
+  var frames = 0;
+  function frame(){
+    if(running){
+      var steps = Math.max(1, Math.round(14*speed));
+      for(var s=0;s<steps;s++) step(dt);
+    }
+    drawChain();
+    if(frames % 3 === 0){ analyse(); drawSpectrum(); updateReadouts(); }
+    frames++;
+    requestAnimationFrame(frame);
+  }
+
+  function resize(){ measureChain(); measureSpec(); }
+  window.addEventListener('resize', resize);
+
+  /* ---------------- go ---------------- */
+  allocate(12);
+  measureChain();
+  measureSpec();
+  setMode(1);
+  analyse();
+  if(reduceMotion) toggleRun(false);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
