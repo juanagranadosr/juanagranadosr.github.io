@@ -3,6 +3,10 @@ url: "juanagranadosr.github.io"
 remote_theme: ankitsultana/researcher@gem
 baseurl: ""
 
+favicon: true
+favicon_location: "/favicon-32.png"
+apple_touch_icon_location: "/favicon.png"
+
 markdown: kramdown
 #ins_logo: "./bits-logo.png"
 
