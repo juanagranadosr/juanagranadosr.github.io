@@ -14,4 +14,4 @@ Small, self-contained interactive visualizations for building intuition about id
 
 ---
 
-<small><em>This is a small side project I do together with <a href="https://github.com/PaoloGari96">Paolo Garmiberti</a> — we build these to make sense of ideas we're curious about, one small program at a time.</em></small>
+<small><em>This is a small side project I do together with <a href="https://github.com/PaoloGari96">Paolo Garimberti</a> — we build these to make sense of ideas we're curious about, one small program at a time.</em></small>
