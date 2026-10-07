@@ -1,31 +1,51 @@
 title: "Juana Granados"
-url: "juanagranadosr.github.io"
-remote_theme: ankitsultana/researcher@gem
+tagline: "Theoretical Physicist"
+email: jgranadosr24@gmail.com
+github_username: juanagranadosr
+description: >-
+  Personal site of Juana Granados, theoretical physicist working on
+  quantum field theory, mathematical physics, and renormalization-group
+  methods, with experimental experience in nanomagnetism.
+
+url: "https://juanagranadosr.github.io"
 baseurl: ""
 
-favicon: true
-favicon_location: "/favicon-32.png"
-apple_touch_icon_location: "/favicon.png"
-
 markdown: kramdown
-#ins_logo: "./bits-logo.png"
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
 
-tracking_id: #
-
-footer: yes
-footer_url: "https://github.com/ankitsultana"
-footer_text: "Page design by Ankit Sultana"
-
-sass:
-    style: compressed
-    sass_dir: _sass
+permalink: /:title/
 
 nav:
- #- name: "About"
- #  link: "/researcher/"
- - name: "CV"
-   link: "/cv"
- - name: "Intuition Lab"
-   link: "/intuition-lab/"
- - name: "Contact"
-   link: "/contact"
+  - name: "Projects"
+    link: "/projects/"
+  - name: "Research"
+    link: "/research/"
+  - name: "CV"
+    link: "/cv/"
+  - name: "Contact"
+    link: "/contact/"
+
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - vendor
+  - node_modules
+
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+  - scope:
+      path: ""
+    values:
+      layout: "default"

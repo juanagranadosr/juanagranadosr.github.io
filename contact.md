@@ -1,8 +1,10 @@
 ---
-layout: default
-is_contact: true
+title: "Contact"
+subtitle: "Always happy to talk physics, doctoral opportunities, or the Intuition Lab."
+permalink: /contact/
 ---
 
-* Email: [jgranadosr24@gmail.com](mailto:jgranadosr24@gmail.com)
-
-* GitHub: [juanagranadosr](https://github.com/juanagranadosr)
+<ul class="contact-list">
+  <li><span class="label">Email</span> <a href="mailto:jgranadosr24@gmail.com">jgranadosr24@gmail.com</a></li>
+  <li><span class="label">GitHub</span> <a href="https://github.com/juanagranadosr" target="_blank" rel="noopener">github.com/juanagranadosr</a></li>
+</ul>

@@ -1,0 +1,18 @@
+---
+title: "Blog"
+subtitle: "Notes on physics, research, and whatever else is on my mind."
+permalink: /blog/
+---
+
+<div>
+{% for post in site.posts %}
+  <div class="card">
+    <a class="card-link" href="{{ post.url | relative_url }}" aria-label="Read {{ post.title }}"></a>
+    <span class="meta">{{ post.date | date: '%B %-d, %Y' }}</span>
+    <h3>{{ post.title }}</h3>
+    {% if post.excerpt %}<p>{{ post.excerpt | strip_html | truncate: 160 }}</p>{% endif %}
+  </div>
+{% else %}
+  <p>Nothing posted yet, check back soon.</p>
+{% endfor %}
+</div>
