@@ -134,9 +134,39 @@ h1, h2, h3, h4 {
     border-bottom: 1px solid var(--border);
     padding: 8px 24px 20px;
     gap: 14px;
+    z-index: 10;
   }
   .site-header { position: relative; }
   body.nav-open .site-nav { display: flex; }
+
+  .wrap { padding: 0 18px; }
+
+  .hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .hero-photo { width: 84px; height: 84px; }
+  .hero-text h1 { font-size: 24px; }
+
+  .lede { font-size: 16.5px; }
+
+  .quick-links a { padding: 9px 14px; font-size: 13.5px; }
+
+  .page-title { font-size: 25px; }
+
+  .card { padding: 16px 18px; }
+
+  .lab-feature { padding: 20px 18px 18px; }
+
+  .timeline { padding-left: 18px; }
+  .timeline-entry::before { left: -23px; }
+
+  .contact-list { font-size: 16px; }
+  .contact-list .label { display: block; width: auto; margin-bottom: 2px; }
+
+  .site-footer-inner { flex-direction: column; align-items: flex-start; gap: 10px; }
 }
 
 /* ---------- main / page ---------- */
@@ -174,6 +204,18 @@ code {
   padding: 2px 5px;
   border-radius: 4px;
 }
+
+pre {
+  overflow-x: auto;
+  background: var(--bg-alt);
+  padding: 14px 16px;
+  border-radius: 8px;
+}
+pre code { background: none; padding: 0; }
+
+img { max-width: 100%; height: auto; }
+
+table { display: block; max-width: 100%; overflow-x: auto; }
 
 /* ---------- home / hero ---------- */
 .hero {
