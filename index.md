@@ -8,7 +8,7 @@ I'm Juana, a theoretical physicist with an MSc in Astrophysics, Particle Physics
 
 I recently completed my master's thesis on symmetry protection and the hierarchy problem, combining lattice/Ising-type models with continuum quantum field theory calculations. I'm now looking for doctoral opportunities in theoretical physics, statistical and non-equilibrium physics, complex systems, and applied mathematics, particularly where field-theoretic and mathematical methods can be applied to collective phenomena.
 
-You can find my [CV](resume.pdf) and get in [touch](contact) via the links above. Below are my two theses.
+You can find my [CV](cv) and get in [touch](contact) via the links above. Below are my two theses.
 
 ---
 

@@ -5,7 +5,7 @@ noindex: true
 ---
 ### Archive
 
-A selection of certificates, posters, and other supporting documents, referenced from my [CV](../resume.pdf).
+A selection of certificates, posters, and other supporting documents, referenced from my [CV](../cv).
 
 * **Quantum Computing Workshop** — [certificate](quantum-computing-workshop.pdf) · [repository](https://github.com/juanagranadosr/quantum_computing_workshop)
 
