@@ -49,3 +49,4 @@ defaults:
       path: ""
     values:
       layout: "default"
+      image: /assets/images/og-image.png
