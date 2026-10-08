@@ -109,12 +109,6 @@ Jan 2023 – Jul 2024
 
 </div>
 
-#### Technical skills
-
-* **Programming:** Python (NumPy, SciPy, Matplotlib, Pandas, Scikit-learn), R, Jupyter Notebooks
-* **Laboratory:** Vibrating Sample Magnetometry (VSM), X-ray Diffraction (XRD), Raman spectroscopy
-* **Quantum computing:** Qibo and other quantum programming frameworks
-
 #### Additional experience
 
 <div class="timeline">

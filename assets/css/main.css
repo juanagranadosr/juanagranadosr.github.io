@@ -139,7 +139,7 @@ h1, h2, h3, h4 {
   .site-header { position: relative; }
   body.nav-open .site-nav { display: flex; }
 
-  .wrap { padding: 0 22px; }
+  .wrap { padding: 0 28px; }
 
   .page-main { padding: 36px 0 56px; }
 
